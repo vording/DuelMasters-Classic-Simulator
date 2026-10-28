@@ -10,7 +10,7 @@ const Sound = (() => {
   const NAMES = [
     'draw', 'shuffle', 'tap', 'untap',
     'summon', 'evolve', 'spell', 'trigger', 'field',
-    'mana-light', 'mana-water', 'mana-dark', 'mana-fire', 'mana-nature', 'mana-multi', 'mana-zero',
+    'mana-light', 'mana-water', 'mana-dark', 'mana-fire', 'mana-nature', 'mana-multi',
     'attack', 'attacked', 'block', 'break', 'destroy', 'discard',
     'phase', 'myturn', 'endturn', 'win', 'lose', 'button', 'cancel',
   ];
@@ -27,7 +27,7 @@ const Sound = (() => {
   const audio = {};
   const lastPlayed = {};
 
-  const manaName = (civs = []) => (civs.length > 1 ? 'mana-multi' : MANA[civs[0]] ? `mana-${MANA[civs[0]]}` : 'mana-zero');
+  const manaName = (civs = []) => (civs.length === 1 && MANA[civs[0]] ? `mana-${MANA[civs[0]]}` : 'mana-multi');
 
   // mp3 を読めなければ wav を試し、どちらもなければ鳴らさない
   function load(name) {

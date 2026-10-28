@@ -1,24 +1,23 @@
-// デュエマ System — カードの登録とデッキ作成（カードのデータは cards.js）
+// デュエマ System — デッキ作成（カードのデータは cards.js・classic-cards.js）
 
 const $ = (id) => document.getElementById(id);
 
 let state = DM.load();
-// 絞り込み：文字と文明（空なら全部）
-let filterCivs = new Set();
-// 編集中のカードID（新しいカードなら null）
-let editing = null;
+const CARDS = DM.allCards();
+// 絞り込みの文明（空なら全部）
+const filterCivs = new Set();
 
 const save = () => DM.save(state);
 const nextDeckId = () => Math.max(0, ...state.decks.map((d) => d.id)) + 1;
 const activeDeck = () => state.decks.find((d) => d.id === state.current) ?? state.decks[0];
-const cardById = (id) => state.cards[id];
-// デッキの中身 [{ card, qty }]（登録から消えたカードは除く）
+// デッキの中身 [{ card, qty }]（収録カードにないものは除く）
 const deckEntries = (d = activeDeck()) => Object.entries(d.cards)
-  .map(([id, qty]) => ({ card: cardById(id), qty }))
+  .map(([id, qty]) => ({ card: CARDS[id], qty }))
   .filter((e) => e.card && e.qty > 0);
 const deckTotal = (d = activeDeck()) => deckEntries(d).reduce((n, e) => n + e.qty, 0);
-const allCards = () => Object.values(state.cards);
+const allCards = () => Object.values(CARDS);
 const byCostName = (a, b) => a.cost - b.cost || a.name.localeCompare(b.name, 'ja');
+const phone = () => window.isPhone?.() ?? false;
 
 // ---------- フォーマット（クラシック）と殿堂 ----------
 
@@ -36,8 +35,7 @@ function maxCopies(card, fmt = deckFormat()) {
   return DM.MAX_COPIES;
 }
 
-// フォーマットの時代に入っているか（初出が未設定なら判定しない）
-const inEra = (card, fmt = deckFormat()) => !fmt.era || !card.era || DM.eraRank(card.era) <= fmt.era;
+const inEra = (card, fmt = deckFormat()) => !fmt.era || DM.eraRank(card.era) <= fmt.era;
 const usableIn = (card, fmt = deckFormat()) => inEra(card, fmt) && maxCopies(card, fmt) > 0;
 
 // ---------- デッキ操作 ----------
@@ -96,7 +94,7 @@ function deleteDeck() {
   const deck = activeDeck();
   if (!confirm(`「${deck.name}」を削除しますか？`)) return;
   state.decks = state.decks.filter((d) => d !== deck);
-  if (!state.decks.length) state.decks.push({ id: 1, name: 'デッキ1', cards: {} });
+  if (!state.decks.length) state.decks.push({ id: 1, name: 'デッキ1', format: 'c08', cards: {} });
   switchDeck(state.decks[0].id);
 }
 
@@ -108,8 +106,7 @@ function deckWarnings(fmt = deckFormat(), { size = true } = {}) {
   const reg = regOf(fmt);
   const entries = deckEntries();
   for (const { card, qty } of entries) {
-    if (fmt.era && !card.era) warnings.push(`${card.name} の初出が未設定です（✎ で設定すると${fmt.name}で使えるか判定します）`);
-    else if (!inEra(card, fmt)) warnings.push(`${card.name} は${fmt.name}で使用できません（初出：${DM.eraName(card.era)}）`);
+    if (!inEra(card, fmt)) warnings.push(`${card.name} は${fmt.name}で使用できません（初出：${card.set}）`);
     const max = maxCopies(card, fmt);
     if (max === 0) warnings.push(`${card.name} は${fmt.name}の禁止カードです`);
     else if (qty > max) warnings.push(`${card.name} は${max}枚までです${max === 1 ? `（${reg.helper.includes(card.name) ? 'お助けカード' : '制限カード'}）` : ''}`);
@@ -126,15 +123,12 @@ function deckWarnings(fmt = deckFormat(), { size = true } = {}) {
 }
 
 // レギュレーションのバッジ：採用カードの初出から、デッキが入る一番狭いクラシックのフォーマットを決める
-// { fmt, issues: そのフォーマットの殿堂の違反数 } / { unknown: 初出が未設定のカードの数 } / { none: true }（2009年以降のカードあり）
+// { fmt, issues: そのフォーマットの殿堂の違反数 }。デッキが空なら null
 function fittingFormat() {
   const cards = deckEntries().map((e) => e.card);
   if (!cards.length) return null;
-  const unknown = cards.filter((c) => !c.era).length;
-  if (unknown) return { unknown };
   const rank = Math.max(...cards.map((c) => DM.eraRank(c.era)));
-  const fmt = DM.FORMATS.find((f) => f.era && f.era >= rank);
-  if (!fmt) return { none: true };
+  const fmt = DM.FORMATS.find((f) => f.era && f.era >= rank) ?? DM.formatOf('c08');
   return { fmt, issues: deckWarnings(fmt, { size: false }).length };
 }
 
@@ -143,25 +137,14 @@ function renderBadge() {
   const badge = $('reg-badge');
   badge.hidden = !fit;
   if (!fit) return;
-  const current = deckFormat();
-  badge.className = 'reg-badge';
-  badge.disabled = true;
-  if (fit.unknown) {
-    badge.textContent = `初出が未設定のカードが${fit.unknown}種類あります`;
-    badge.classList.add('unknown');
-  } else if (fit.none) {
-    badge.textContent = 'クラシックの範囲外（2009年以降のカードあり）';
-    badge.classList.add('none');
-  } else {
-    const switchTo = current.id !== fit.fmt.id;
-    badge.textContent = `${fit.fmt.name}で組めるデッキ${fit.issues ? `（殿堂の違反${fit.issues}件）` : ''}${switchTo ? ' ▶ このフォーマットにする' : ''}`;
-    badge.classList.add(fit.issues ? 'issues' : 'ok', `fmt-${fit.fmt.id}`);
-    badge.disabled = !switchTo;
-    badge.onclick = () => {
-      activeDeck().format = fit.fmt.id;
-      update();
-    };
-  }
+  const switchTo = deckFormat().id !== fit.fmt.id;
+  badge.className = `reg-badge ${fit.issues ? 'issues' : 'ok'} fmt-${fit.fmt.id}`;
+  badge.textContent = `${fit.fmt.name}で組めるデッキ${fit.issues ? `（殿堂の違反${fit.issues}件）` : ''}${switchTo ? ' ▶ このフォーマットにする' : ''}`;
+  badge.disabled = !switchTo;
+  badge.onclick = () => {
+    activeDeck().format = fit.fmt.id;
+    update();
+  };
 }
 
 // ---------- 殿堂の編集 ----------
@@ -197,120 +180,6 @@ function saveRegulations(e) {
   update();
 }
 
-// ---------- カードの登録・編集 ----------
-
-function openCardEditor(card = null) {
-  editing = card?.id ?? null;
-  const form = $('card-form');
-  form.reset();
-  $('card-dialog-title').textContent = card ? 'カードの編集' : '新しいカード';
-  $('card-delete').hidden = !card;
-  $('card-error').textContent = '';
-  const c = card ?? { civs: [...filterCivs].slice(0, 1), cost: 1, type: 'クリーチャー' };
-  form.elements.name.value = c.name ?? '';
-  form.elements.cost.value = c.cost ?? 0;
-  form.elements.power.value = c.power ?? '';
-  form.elements.type.value = DM.TYPES.includes(c.type) ? c.type : 'その他';
-  form.elements.race.value = c.race ?? '';
-  form.elements.text.value = c.text ?? '';
-  form.elements.image.value = c.image ?? '';
-  form.elements.set.value = c.set ?? '';
-  form.elements.era.value = c.era ?? '';
-  for (const box of form.querySelectorAll('[name="civ"]')) box.checked = (c.civs ?? []).includes(box.value);
-  renderEditPreview();
-  $('card-dialog').showModal();
-  form.elements.name.focus();
-}
-
-function formCard() {
-  const form = $('card-form');
-  return DM.normalize({
-    id: editing,
-    name: form.elements.name.value,
-    civs: [...form.querySelectorAll('[name="civ"]:checked')].map((b) => b.value),
-    cost: form.elements.cost.value,
-    power: form.elements.power.value,
-    type: form.elements.type.value,
-    race: form.elements.race.value,
-    text: form.elements.text.value,
-    image: form.elements.image.value,
-    set: form.elements.set.value,
-    era: form.elements.era.value,
-  });
-}
-
-function renderEditPreview() {
-  const c = formCard();
-  // 収録の番号から初出が分かるときは自動で選ぶ
-  const auto = DM.eraFromSet(c.set);
-  const era = $('card-form').elements.era;
-  if (auto) era.value = auto;
-  era.disabled = !!auto;
-  $('card-edit-preview').replaceChildren(DM.cardFace({ ...c, name: c.name || '（名前）' }));
-  // パワーはクリーチャーだけ
-  $('card-form').elements.power.disabled = !DM.isCreatureType($('card-form').elements.type.value);
-}
-
-function saveCardFromForm(e) {
-  e.preventDefault();
-  const card = formCard();
-  if (!card.name) {
-    $('card-error').textContent = '名前を入力してください。';
-    return;
-  }
-  const same = allCards().find((c) => c.name === card.name && c.id !== card.id);
-  if (same) {
-    $('card-error').textContent = `「${card.name}」はすでに登録されています。`;
-    return;
-  }
-  state.cards[card.id] = card;
-  $('card-dialog').close();
-  update();
-}
-
-function deleteCardFromForm() {
-  const card = cardById(editing);
-  if (!card) return;
-  const used = state.decks.filter((d) => d.cards[card.id]);
-  const note = used.length ? `\n${used.map((d) => `「${d.name}」`).join('、')}からも取り除かれます。` : '';
-  if (!confirm(`「${card.name}」を削除しますか？${note}`)) return;
-  delete state.cards[card.id];
-  for (const d of state.decks) delete d.cards[card.id];
-  $('card-dialog').close();
-  update();
-}
-
-// まとめて登録：名前|文明|コスト|種類|パワー|種族|テキスト
-function runBulk(e) {
-  e.preventDefault();
-  let added = 0;
-  let updated = 0;
-  const errors = [];
-  $('bulk-text').value.split(/\r?\n/).forEach((raw, i) => {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) return;
-    const f = line.split(/\t|｜|\|/).map((s) => s.trim());
-    if (f.length < 3 || !f[0]) {
-      errors.push(`${i + 1}行目：項目が足りません`);
-      return;
-    }
-    const [name, civs, cost, type, power, race, text = '', set = ''] = f;
-    const same = allCards().find((c) => c.name === name);
-    const card = DM.normalize({
-      id: same?.id, name, civs, cost, type: type || 'クリーチャー', power, race,
-      text: text.replace(/\\n/g, '\n'), set: set || same?.set, era: same?.era,
-    });
-    if (same?.image) card.image = same.image;
-    state.cards[card.id] = card;
-    if (same) updated++;
-    else added++;
-  });
-  save();
-  renderResults();
-  renderDeck();
-  $('bulk-status').textContent = [`${added}種類を登録、${updated}種類を上書きしました。`, ...errors].join('\n');
-}
-
 // ---------- テキストのコピー・インポート ----------
 
 function exportText() {
@@ -323,7 +192,7 @@ function exportText() {
 async function copyExport(button) {
   const text = exportText();
   const label = button.textContent;
-  if (!window.isPhone?.()) {
+  if (!phone()) {
     try {
       await navigator.clipboard.writeText(text);
       button.textContent = 'コピーしました';
@@ -365,6 +234,8 @@ function openImport() {
   $('import-text').focus();
 }
 
+const cardByName = (name) => allCards().find((c) => c.name === name);
+
 function runImport(e) {
   e.preventDefault();
   const cards = {};
@@ -373,28 +244,27 @@ function runImport(e) {
     const m = raw.trim().match(/^(?:(\d+)\s*[xX×枚]?\s+)?(.+)$/);
     if (!m) continue;
     const name = m[2].trim();
-    const card = allCards().find((c) => c.name === name);
+    const card = cardByName(name);
     if (!card) { missing.push(name); continue; }
     cards[card.id] = (cards[card.id] ?? 0) + Number(m[1] ?? 1);
   }
   if (!Object.keys(cards).length) {
     $('import-status').textContent = missing.length
-      ? `登録済みのカードが1枚も見つかりませんでした：${missing.join('、')}`
+      ? `カードが1枚も見つかりませんでした：${missing.join('、')}`
       : 'カードの行が見つかりませんでした。';
     return;
   }
   const deck = { id: nextDeckId(), name: $('import-name').value.trim() || `インポート${nextDeckId()}`, format: activeDeck().format, cards };
   state.decks.push(deck);
   switchDeck(deck.id);
-  if (missing.length) $('import-status').textContent = `「${deck.name}」を追加しました。\n未登録のカード（読み込んでいません）：${missing.join('、')}`;
+  if (missing.length) $('import-status').textContent = `「${deck.name}」を追加しました。\n見つからなかったカード：${missing.join('、')}`;
   else $('import-dialog').close();
 }
 
 // ---------- 共有リンク ----------
-// デッキ名と、カードの情報（名前・文明・コスト・テキストなど）ごと URL の # 以降に詰める（サーバーには送られない）。
-// 形式: #deck=<z|j><base64url>（z: deflate で圧縮した JSON、j: 圧縮なし）
-
-const SHARE_FIELDS = ['name', 'civs', 'cost', 'power', 'type', 'race', 'text', 'image', 'set', 'era'];
+// デッキ名・フォーマット・カード名と枚数を URL の # 以降に詰める（サーバーには送られない）。
+// 形式: #deck=<z|j><base64url>（z: deflate で圧縮した JSON、j: 圧縮なし）。
+// 以前の版のリンク（カードの情報ごと入っている）も、名前で読み込む
 
 const toBase64Url = (bytes) => {
   let s = '';
@@ -405,8 +275,7 @@ const fromBase64Url = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').rep
 const pipeBytes = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
 
 async function deckLink(deck) {
-  const card = (c) => Object.fromEntries(SHARE_FIELDS.filter((k) => c[k] !== '' && c[k] != null).map((k) => [k, c[k]]));
-  const data = { n: deck.name, f: deck.format, c: deckEntries(deck).map((e) => [e.qty, card(e.card)]) };
+  const data = { n: deck.name, f: deck.format, c: deckEntries(deck).map((e) => [e.qty, e.card.name]) };
   let bytes = new TextEncoder().encode(JSON.stringify(data));
   let tag = 'j';
   if (window.CompressionStream) {
@@ -432,7 +301,7 @@ async function shareLink(button) {
   }
   const url = await deckLink(deck);
   const label = button.textContent;
-  if (window.isPhone?.() && navigator.share) {
+  if (phone() && navigator.share) {
     navigator.share({ title: deck.name, url }).catch(() => {});
     return;
   }
@@ -445,7 +314,7 @@ async function shareLink(button) {
   }
 }
 
-// 共有リンクで開かれたら、確認してからデッキ（と未登録のカード）を追加する
+// 共有リンクで開かれたら、確認してからデッキを追加する
 async function openSharedDeck() {
   const m = location.hash.match(/^#deck=([zj][\w-]+)$/);
   if (!m) return;
@@ -457,22 +326,19 @@ async function openSharedDeck() {
     alert('共有リンクを読み込めませんでした。リンクが途中で切れていないか確認してください。');
     return;
   }
-  const entries = data.c.filter(([qty, c]) => qty > 0 && c?.name);
-  const total = entries.reduce((n, [qty]) => n + qty, 0);
-  const fresh = entries.filter(([, c]) => !allCards().some((x) => x.name === c.name));
-  const name = String(data.n ?? '共有デッキ').slice(0, 60);
-  const note = fresh.length ? `\n登録されていないカード${fresh.length}種類も登録します。` : '';
-  if (!confirm(`共有されたデッキ「${name}」（${total}枚）を追加しますか？${note}`)) return;
   const cards = {};
-  for (const [qty, c] of entries) {
-    // 同じ名前のカードが登録済みなら、そちらを使う（上書きしない）
-    let card = allCards().find((x) => x.name === c.name);
-    if (!card) {
-      card = DM.normalize({ ...c, id: null });
-      state.cards[card.id] = card;
-    }
+  const missing = [];
+  let total = 0;
+  for (const [qty, c] of data.c) {
+    const name = typeof c === 'string' ? c : c?.name;
+    const card = cardByName(name);
+    if (!card || !(qty > 0)) { if (name) missing.push(name); continue; }
     cards[card.id] = (cards[card.id] ?? 0) + qty;
+    total += qty;
   }
+  const name = String(data.n ?? '共有デッキ').slice(0, 60);
+  const note = missing.length ? `\n（見つからないカード：${missing.join('、')}）` : '';
+  if (!total || !confirm(`共有されたデッキ「${name}」（${total}枚）を追加しますか？${note}`)) return;
   const deck = { id: nextDeckId(), name, format: DM.formatOf(data.f).id, cards };
   state.decks.push(deck);
   switchDeck(deck.id);
@@ -485,7 +351,7 @@ const detailOf = (card) => ({ name: card.name, image: card.image, text: DM.detai
 function matchesFilter(card) {
   const q = $('query').value.trim();
   if (q && ![card.name, card.race, card.text, card.type].some((s) => String(s ?? '').includes(q))) return false;
-  if (filterCivs.size && !card.civs.some((c) => filterCivs.has(c)) && !(filterCivs.has('ゼロ') && !card.civs.length)) return false;
+  if (filterCivs.size && !card.civs.some((c) => filterCivs.has(c))) return false;
   if ($('format-only').checked && !usableIn(card)) return false;
   return true;
 }
@@ -498,67 +364,68 @@ let shownLimit = PAGE;
 function refilter() {
   shownLimit = PAGE;
   renderResults();
-  $('results').scrollTop = 0;
+  $('results').parentElement.scrollTop = 0;
 }
 
 function renderResults() {
   const list = allCards().filter(matchesFilter).sort(byCostName);
-  $('card-total').textContent = `${list.length} / ${allCards().length} 種類`;
-  const box = $('results');
+  $('card-total').textContent = `${list.length} / ${allCards().length}`;
   $('more').hidden = list.length <= shownLimit;
-  if (!allCards().length) {
-    box.innerHTML = '<p class="empty">まだカードがありません。「＋ 新しいカード」から登録してください。</p>';
+  const box = $('results');
+  if (!list.length) {
+    box.innerHTML = '<p class="empty">条件に合うカードがありません。</p>';
     return;
   }
   box.replaceChildren(...list.slice(0, shownLimit).map((card) => {
     const qty = activeDeck().cards[card.id] ?? 0;
-    const btn = document.createElement('div');
-    btn.className = 'result' + (qty >= maxCopies(card) ? ' maxed' : '') + (inEra(card) ? '' : ' out-of-era');
-    btn.tabIndex = 0;
-    btn.title = `${card.name}（クリックで追加）\n${DM.detailText(card)}`;
-    btn.append(DM.cardFace(card, { lazy: true }));
-    if (qty) btn.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: qty }));
-    const edit = Object.assign(document.createElement('button'), { type: 'button', className: 'edit', textContent: '✎', title: '編集' });
-    edit.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openCardEditor(card);
-    });
-    btn.append(edit);
-    btn.addEventListener('click', () => addCard(card));
-    btn.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCard(card); });
-    btn.addEventListener('mouseenter', () => showPreview(card));
-    btn.addEventListener('contextmenu', (e) => {
+    const el = document.createElement('div');
+    el.className = 'result' + (qty >= maxCopies(card) ? ' maxed' : '') + (inEra(card) ? '' : ' out-of-era');
+    el.tabIndex = 0;
+    el.append(DM.cardFace(card, { lazy: true }));
+    if (qty) el.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: qty }));
+    el.addEventListener('click', () => addCard(card));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCard(card); });
+    el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      if (!window.isPhone?.()) removeCard(card);
+      if (!phone()) removeCard(card);
     });
-    onLongPress(btn, () => showCardDetail(detailOf(card), [
+    hoverPreview(el, card);
+    onLongPress(el, () => showCardDetail(detailOf(card), [
       ['1枚追加', () => addCard(card)],
       ['1枚減らす', () => removeCard(card)],
-      ['編集', () => openCardEditor(card)],
     ]));
-    return btn;
+    return el;
   }));
-  if (!list.length) box.innerHTML = '<p class="empty">条件に合うカードがありません。</p>';
 }
 
-function showPreview(card) {
-  $('preview').replaceChildren(DM.cardFace(card), Object.assign(document.createElement('p'), { className: 'preview-text', textContent: DM.detailText(card) }));
+// PC：マウスを乗せたカードを、マウスの横に大きく出す
+function hoverPreview(el, card) {
+  el.addEventListener('mouseenter', (e) => {
+    if (phone()) return;
+    const box = $('hover-preview');
+    box.replaceChildren(DM.cardFace(card), Object.assign(document.createElement('p'), { textContent: DM.detailText(card) }));
+    box.hidden = false;
+    placePreview(e);
+  });
+  el.addEventListener('mousemove', placePreview);
+  el.addEventListener('mouseleave', () => { $('hover-preview').hidden = true; });
+}
+
+function placePreview(e) {
+  const box = $('hover-preview');
+  if (box.hidden) return;
+  const { width, height } = box.getBoundingClientRect();
+  const x = e.clientX + 24 + width > innerWidth ? e.clientX - width - 24 : e.clientX + 24;
+  box.style.left = `${Math.max(8, x)}px`;
+  box.style.top = `${Math.max(8, Math.min(e.clientY - height / 3, innerHeight - height - 8))}px`;
 }
 
 function renderDeckList() {
-  $('deck-select').replaceChildren(...state.decks.map((d) => {
-    const fmt = deckFormat(d);
-    return new Option(`${d.name}（${fmt.era ? `${fmt.name}・` : ''}${deckTotal(d)}枚）`, d.id);
-  }));
+  $('deck-select').replaceChildren(...state.decks.map((d) => new Option(`${d.name}（${deckTotal(d)}枚）`, d.id)));
   $('deck-select').value = activeDeck().id;
   const fmt = deckFormat();
   $('format').value = fmt.id;
   $('reg-open').hidden = !fmt.era;
-  const reg = regOf(fmt);
-  const regCount = reg.restricted.length + reg.banned.length + reg.helper.length + reg.combos.length;
-  $('format-note').textContent = fmt.era
-    ? `${fmt.note}。非公式のフォーマットです。${regCount ? '' : '殿堂（制限・お助けカードなど）はまだ入力されていません。「殿堂…」から入力してください。'}`
-    : '';
 }
 
 function renderDeck() {
@@ -575,11 +442,11 @@ function renderDeck() {
   const entries = deckEntries().sort((a, b) => byCostName(a.card, b.card));
   $('deck-sort').value = activeDeck().sort ?? 'type';
   if (!entries.length) {
-    deck.innerHTML = '<p class="empty">左のカードをクリックして追加（右クリックで1枚減らす）</p>';
+    deck.innerHTML = '<p class="empty">カードをクリックして追加（右クリックで1枚減らす）</p>';
     return;
   }
   deck.replaceChildren(...deckGroups(entries, activeDeck().sort).flatMap(([label, list]) => {
-    const h = document.createElement('h3');
+    const h = document.createElement('h4');
     h.textContent = `${label} (${list.reduce((n, e) => n + e.qty, 0)})`;
     return [h, ...list.map(renderRow)];
   }));
@@ -595,7 +462,7 @@ function deckGroups(entries, sort = 'type') {
   }
   if (sort === 'civ') {
     // 単色は文明の並び、多色はまとめて最後
-    for (const e of entries) put(e.card.civs.length > 1 ? '多色' : e.card.civs[0] ?? 'ゼロ', e);
+    for (const e of entries) put(e.card.civs.length > 1 ? '多色' : e.card.civs[0], e);
     const order = [...DM.CIVS.map((c) => c.name), '多色'];
     return order.filter((k) => groups.has(k)).map((k) => [k, groups.get(k)]);
   }
@@ -617,7 +484,7 @@ function renderStats() {
   $('deck-stats').replaceChildren(...items.filter(([, n], i) => n || i < 2).map(([label, n, cls]) => {
     const s = document.createElement('span');
     s.className = `stat ${cls}`;
-    s.textContent = `${label} ${n}`;
+    s.append(Object.assign(document.createElement('b'), { textContent: n }), label);
     return s;
   }));
 }
@@ -625,13 +492,13 @@ function renderStats() {
 function renderRow({ card, qty }) {
   const row = document.createElement('div');
   row.className = 'row';
-  row.innerHTML = '<span class="qty"></span><span class="civ-dots"></span><span class="cost"></span><span class="name"></span><button class="minus">−</button><button class="plus">＋</button>';
+  row.innerHTML = '<span class="qty"></span><span class="civ-dots"></span><span class="cost"></span><span class="name"></span><button class="minus" aria-label="1枚減らす">−</button><button class="plus" aria-label="1枚追加">＋</button>';
   row.querySelector('.qty').textContent = qty;
   row.querySelector('.cost').textContent = card.cost;
   row.querySelector('.name').textContent = card.name;
-  row.querySelector('.civ-dots').replaceChildren(...(card.civs.length ? card.civs : ['ゼロ']).map((n) => {
+  row.querySelector('.civ-dots').replaceChildren(...card.civs.map((n) => {
     const dot = document.createElement('i');
-    dot.className = `civ-dot civ-${DM.civOf(n)?.cls ?? 'zero'}`;
+    dot.className = `civ-dot civ-${DM.civOf(n)?.cls}`;
     dot.title = n;
     return dot;
   }));
@@ -641,14 +508,14 @@ function renderRow({ card, qty }) {
     ['1枚追加', () => addCard(card)],
     ['1枚減らす', () => removeCard(card)],
   ]));
-  row.addEventListener('mouseenter', () => showPreview(card));
+  hoverPreview(row, card);
   return row;
 }
 
 // 文明ごとの枚数（多色のカードはそれぞれの文明に数える）
 function renderCivCount() {
   const counts = new Map(DM.CIVS.map((c) => [c.name, 0]));
-  for (const { card, qty } of deckEntries()) for (const n of card.civs.length ? card.civs : ['ゼロ']) counts.set(n, counts.get(n) + qty);
+  for (const { card, qty } of deckEntries()) for (const n of card.civs) counts.set(n, counts.get(n) + qty);
   $('civ-count').replaceChildren(...DM.CIVS.filter((c) => counts.get(c.name)).map((c) => {
     const s = document.createElement('span');
     s.className = `civ-chip civ-${c.cls}`;
@@ -680,8 +547,7 @@ function renderCivFilter() {
       if (filterCivs.has(c.name)) filterCivs.delete(c.name);
       else filterCivs.add(c.name);
       renderCivFilter();
-      shownLimit = PAGE;
-      renderResults();
+      refilter();
     });
     return b;
   }));
@@ -690,15 +556,6 @@ function renderCivFilter() {
 // ---------- 初期化 ----------
 
 function init() {
-  // 編集画面の文明・種類の選択肢
-  $('civ-checks').replaceChildren(...DM.CIVS.map((c) => {
-    const label = document.createElement('label');
-    label.className = `civ-check civ-${c.cls}`;
-    label.append(Object.assign(document.createElement('input'), { type: 'checkbox', name: 'civ', value: c.name }), c.name);
-    return label;
-  }));
-  $('card-form').elements.type.replaceChildren(...DM.TYPES.map((t) => new Option(t, t)));
-  $('card-form').elements.era.replaceChildren(new Option('未設定', ''), ...DM.ERAS.map((e) => new Option(e.name, e.id)));
   $('format').replaceChildren(...DM.FORMATS.map((f) => new Option(f.name, f.id)));
   $('format').addEventListener('change', (e) => {
     activeDeck().format = e.target.value;
@@ -721,18 +578,6 @@ function init() {
     $('reg-dialog').close();
     update();
   });
-  $('card-form').addEventListener('input', renderEditPreview);
-  $('card-form').addEventListener('submit', saveCardFromForm);
-  $('card-cancel').addEventListener('click', () => $('card-dialog').close());
-  $('card-delete').addEventListener('click', deleteCardFromForm);
-  $('card-new').addEventListener('click', () => openCardEditor());
-
-  $('card-bulk').addEventListener('click', () => {
-    $('bulk-status').textContent = '';
-    $('bulk-dialog').showModal();
-  });
-  $('bulk-form').addEventListener('submit', runBulk);
-  $('bulk-cancel').addEventListener('click', () => $('bulk-dialog').close());
 
   $('query').addEventListener('input', refilter);
   $('more').addEventListener('click', () => {
@@ -766,7 +611,7 @@ function init() {
   $('export-close').addEventListener('click', () => $('export-dialog').close());
   window.addEventListener('hashchange', openSharedDeck);
 
-  save(); // 初回はサンプルを保存しておく（一人回し画面で読めるように）
+  save(); // 一人回し画面で読めるように、デッキを保存しておく
   renderDeck();
   renderResults();
   openSharedDeck();

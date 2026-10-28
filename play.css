@@ -21,6 +21,21 @@ body { user-select: none; }
   min-height: 0;
 }
 
+/* アイコン（SVG を CSS に直接書く。画像ファイルは使わない） */
+:root {
+  --ico-attack: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M13.5 2L4 14h7l-1.5 8L20 10h-7z' stroke='%23ff7ad9' fill='rgba(255,122,217,.3)'/></svg>");
+  --ico-charge: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2l6.5 8L12 22 5.5 10z' stroke='%2339d0ff' fill='rgba(57,208,255,.3)'/><path d='M5.5 10h13M12 2v20' stroke='%23ffffff' stroke-width='1.2'/></svg>");
+  --ico-draw: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><rect x='4' y='7' width='11' height='14' rx='2' stroke='%23ffffff'/><path d='M14 3h6v6M20 3l-7 7' stroke='%23c8ff2e'/></svg>");
+  --ico-end: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M5 22V3' stroke='%23ffffff'/><path d='M5 4h13l-3.5 4.5L18 13H5' stroke='%23c8ff2e' fill='rgba(200,255,46,.25)'/></svg>");
+  --ico-graveyard: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M6 20.5V10a6 6 0 0 1 12 0v10.5' stroke='%23ffffff'/><path d='M12 8v7M9.3 10.6h5.4' stroke='%23c8ff2e'/><path d='M3 21h18' stroke='%2339d0ff'/></svg>");
+  --ico-hand: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><rect x='2.5' y='6' width='9' height='13' rx='1.5' transform='rotate(-14 7 12.5)' stroke='%23ffffff'/><rect x='12.5' y='5' width='9' height='13' rx='1.5' transform='rotate(12 17 11.5)' stroke='%23c8ff2e' fill='rgba(200,255,46,.2)'/></svg>");
+  --ico-library: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><rect x='7' y='2.5' width='12' height='16' rx='2' stroke='%2339d0ff' fill='rgba(31,107,255,.35)'/><path d='M4.5 6.5v12a3 3 0 0 0 3 3h9' stroke='%23ffffff'/></svg>");
+  --ico-main: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2.5l2.7 6.3 6.8.6-5.2 4.5 1.6 6.7L12 17l-5.9 3.6 1.6-6.7L2.5 9.4l6.8-.6z' stroke='%23c8ff2e' fill='rgba(200,255,46,.25)'/></svg>");
+  --ico-shield: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 2.5l8 3v6c0 5-3.4 8.7-8 10.5-4.6-1.8-8-5.5-8-10.5v-6z' stroke='%2339d0ff' fill='rgba(31,107,255,.45)'/><path d='M12 7.5v9M8 12h8' stroke='%23c8ff2e'/></svg>");
+  --ico-start: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M20 12a8 8 0 1 1-2.3-5.7' stroke='%23c8ff2e'/><path d='M20 3.5v5h-5' stroke='%23c8ff2e'/></svg>");
+  --ico-undo: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><path d='M9 15L4 10l5-5' stroke='%231f6bff'/><path d='M4 10h10.5a5.5 5.5 0 0 1 0 11H11' stroke='%230a1838'/></svg>");
+}
+
 /* ---------- 左列：カード・案内・フェイズ ---------- */
 
 .col-left { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: auto; background: var(--panel); border: 1px solid #000; box-shadow: var(--raised); padding: 6px; }
@@ -69,17 +84,16 @@ body { user-select: none; }
   width: 19px;
   height: 17px;
   transform: translateY(-50%);
-  background: var(--phase-icon, none) center / cover no-repeat;
+  background: var(--phase-icon, none) center / contain no-repeat;
   opacity: .55;
 }
-.phases button::before { border: 1px solid #000; }
 .phases button.current::before, .phases button:not(:disabled):hover::before, .phase-current::before { opacity: 1; }
-[data-phase="start"] { --phase-icon: url("img/phase/untap.png"); }
-[data-phase="draw"] { --phase-icon: url("img/phase/draw.png"); }
-[data-phase="charge"] { --phase-icon: url("img/phase/upkeep.png"); }
-[data-phase="main"] { --phase-icon: url("img/phase/main1.png"); }
-[data-phase="attack"] { --phase-icon: url("img/phase/attack.png"); }
-[data-phase="end"] { --phase-icon: url("img/phase/end.png"); }
+[data-phase="start"] { --phase-icon: var(--ico-start); }
+[data-phase="draw"] { --phase-icon: var(--ico-draw); }
+[data-phase="charge"] { --phase-icon: var(--ico-charge); }
+[data-phase="main"] { --phase-icon: var(--ico-main); }
+[data-phase="attack"] { --phase-icon: var(--ico-attack); }
+[data-phase="end"] { --phase-icon: var(--ico-end); }
 
 .phase-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
 .phase-actions #next-phase[hidden] + #end-turn { grid-column: 1 / -1; }
@@ -117,21 +131,18 @@ body { user-select: none; }
   vertical-align: middle;
   background: center / contain no-repeat;
 }
-#undo::before { width: 16px; height: 19px; margin: -4px 5px -2px 0; background-image: url("img/icon/undo.png"); }
+#undo::before { width: 18px; height: 18px; margin: -3px 4px -2px 0; background-image: var(--ico-undo); }
 #undo:disabled::before { opacity: .4; }
-.hand-area .zone-label::before { width: 20px; height: 19px; margin: -3px 5px 0 0; background-image: url("img/icon/hand.png"); }
+.hand-area .zone-label::before { width: 20px; height: 20px; margin: -3px 5px 0 0; background-image: var(--ico-hand); }
 .player-name { margin-top: -4px; padding: 1px 4px; font-size: 13px; font-weight: bold; text-align: center; color: #cfcfcf; background: #4a4a4a; box-shadow: var(--raised); }
 
 /* シールドの枚数：小さな裏向きのカード＋数字 */
 .shield-count { display: flex; align-items: center; justify-content: center; gap: 6px; font: bold 30px Arial, Helvetica, sans-serif; line-height: 1.1; color: #fff; }
 .shield-count::before {
   content: "";
-  width: 18px;
-  height: 25px;
-  border: 1px solid #000;
-  border-radius: 3px;
-  background: repeating-linear-gradient(45deg, #1f3f8a 0 3px, #17306c 3px 6px);
-  box-shadow: inset 0 0 0 2px #0c1a3c;
+  width: 26px;
+  height: 26px;
+  background: var(--ico-shield) center / contain no-repeat;
 }
 
 .piles { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
@@ -150,14 +161,14 @@ body { user-select: none; }
   grid-row: 1 / 3;
   width: 30px;
   height: 30px;
-  background: #444444 center / cover no-repeat;
+  background: #0b1c4a center / 66% no-repeat;
   border: 1px solid #000;
   border-radius: 50%;
   box-shadow: 0 0 0 1px #686868;
 }
-.pile-icon.icon-library { background-image: url("img/icon/library.png"); }
-.pile-icon.icon-hand { background-image: url("img/icon/hand.png"); }
-.pile-icon.icon-graveyard { background-image: url("img/icon/graveyard.png"); background-size: 112%; }
+.pile-icon.icon-library { background-image: var(--ico-library); }
+.pile-icon.icon-hand { background-image: var(--ico-hand); }
+.pile-icon.icon-graveyard { background-image: var(--ico-graveyard); }
 .pile-count { font: bold 20px Arial, Helvetica, sans-serif; line-height: 1; color: #fff; }
 .pile-name { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; }
 
@@ -172,7 +183,7 @@ body { user-select: none; }
   border: 1px solid #000;
   box-shadow: var(--sunken);
   border-color: #444444;
-  background: var(--felt-shade, none), var(--felt-image, none) center / cover no-repeat, var(--felt);
+  background: var(--felt-shade, none), var(--field, none), var(--felt);
 }
 
 .banner {
@@ -521,3 +532,6 @@ html.phone .phone-bar button.unread::after { content: "●"; margin-left: 4px; f
 html.phone .menu { left: 0 !important; right: 0; top: auto !important; bottom: 0; z-index: 200; width: 100%; max-height: 80dvh; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
 html.phone .menu button, html.phone .menu button:hover:not(:disabled), html.phone .menu button:active:not(:disabled) { min-height: 42px; padding: 8px 14px; font-size: 15px; }
 html.phone .viewer-cards .card { --card-w: 80px; }
+
+/* スマホの対戦画面は上のバーが狭いので、画面の切り替えは下のバーの「デッキ」で行う */
+html.phone .topbar .nav { display: none; }

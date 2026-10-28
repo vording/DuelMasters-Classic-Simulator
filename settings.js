@@ -1,6 +1,6 @@
 // 設定（両画面の <body> の最後、app.js / play.js より前で読み込む）
 // ・上のバーに歯車のボタンを置き、設定のダイアログを開く
-// ・プレイヤー名・アバター・効果音・戦場の背景・バックアップ（登録したカード・全デッキと設定の書き出し／読み込み）
+// ・プレイヤー名・アバター・効果音・戦場の背景・バックアップ（全デッキと設定の書き出し／読み込み）
 // ・名前やアバターを変えたら window に 'settingschange' イベントを送る
 const Settings = (() => {
   const NAME_KEY = 'dm-deckmaker-name';
@@ -134,7 +134,7 @@ const Settings = (() => {
     }
     let deckCount = 0;
     try { deckCount = JSON.parse(data[`${PREFIX}v1`])?.decks?.length ?? 0; } catch {}
-    if (!confirm(`今のカード・デッキ・設定を、バックアップの内容（デッキ${deckCount}個）で置き換えますか？`)) return;
+    if (!confirm(`今のデッキ・設定を、バックアップの内容（デッキ${deckCount}個）で置き換えますか？`)) return;
     try {
       for (const k of backupKeys()) localStorage.removeItem(k);
       for (const [k, v] of Object.entries(data)) {
@@ -161,13 +161,13 @@ const Settings = (() => {
     dialog.className = 'settings';
     // 戦場の背景は、背景を選べる画面（felt.js を読み込んだ画面）だけに出す
     const felt = document.documentElement.dataset.felt
-      ? `<fieldset class="settings-group well"><legend>戦場の背景</legend><div class="felt-picker settings-felt"></div></fieldset>`
+      ? `<fieldset class="settings-group well"><legend><b>FIELD</b><small>戦場の背景</small></legend><div class="felt-picker settings-felt"></div></fieldset>`
       : '';
     dialog.innerHTML = `
-      <h2 class="panel-head">設定</h2>
+      <h2 class="panel-head"><b>SETTINGS</b><small>設定</small></h2>
       <div class="dialog-body">
         <fieldset class="settings-group well">
-          <legend>プレイヤー</legend>
+          <legend><b>PLAYER</b><small>プレイヤー</small></legend>
           <div class="settings-row">
             <label for="settings-name">名前</label>
             <input id="settings-name" type="text" maxlength="16" autocomplete="off">
@@ -176,7 +176,7 @@ const Settings = (() => {
           <div class="avatar-choices" id="settings-avatars" role="radiogroup" aria-label="アバター"></div>
         </fieldset>
         <fieldset class="settings-group well">
-          <legend>効果音</legend>
+          <legend><b>SOUND</b><small>効果音</small></legend>
           <div class="settings-row">
             <label><input type="checkbox" id="settings-sound"> 効果音を鳴らす</label>
           </div>
@@ -188,8 +188,8 @@ const Settings = (() => {
         </fieldset>
         ${felt}
         <fieldset class="settings-group well">
-          <legend>バックアップ</legend>
-          <p class="note">登録したカード・すべてのデッキ・設定を1つのファイルに保存します。別の端末やブラウザで読み込むと、同じカードとデッキを使えます。</p>
+          <legend><b>BACKUP</b><small>バックアップ</small></legend>
+          <p class="note">すべてのデッキと設定を1つのファイルに保存します。別の端末やブラウザで読み込むと、同じデッキを使えます。</p>
           <div class="settings-row">
             <button type="button" id="backup-save">ファイルに保存</button>
             <button type="button" id="backup-load">ファイルから読み込む…</button>

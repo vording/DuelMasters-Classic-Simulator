@@ -46,6 +46,7 @@ const $ = (id) => document.getElementById(id);
 
 const saved = DM.load();
 const decks = saved.decks ?? [];
+const cardData = DM.allCards();
 
 let game = loadGame();
 let history = [];
@@ -196,7 +197,7 @@ function newGame(deck, onDraw, random = false) {
   const library = [];
   let iid = 0;
   for (const [cid, qty] of Object.entries(deck.cards)) {
-    const card = saved.cards[cid];
+    const card = cardData[cid];
     if (!card) continue;
     for (let i = 0; i < qty; i++) {
       iid++;
@@ -473,7 +474,7 @@ function payCost(card) {
   if (pool.length < cost) return null;
   const chosen = [];
   // 必要な文明ごとに、その文明を持つマナを1枚（単色を優先して、多色を残す）
-  for (const civ of card.civs.filter((n) => n !== 'ゼロ')) {
+  for (const civ of card.civs) {
     if (chosen.some((c) => c.civs.includes(civ))) continue;
     const pickOne = pool.filter((c) => !chosen.includes(c) && c.civs.includes(civ)).sort((a, b) => a.civs.length - b.civs.length)[0];
     if (!pickOne) return null;
@@ -1064,6 +1065,7 @@ function cardEl(iid, zone) {
       e.preventDefault();
       if (!phone()) openCardMenu(iid, e.clientX, e.clientY);
     });
+    if (phone() && canPlay()) onHoldDrag(el, iid, () => openCardMenu(iid, 0, 0));
     return el;
   }
 
@@ -1092,9 +1094,79 @@ function cardEl(iid, zone) {
     e.preventDefault();
     if (!phone()) openCardMenu(iid, e.clientX, e.clientY);
   });
-  // スマホ：長押しで拡大表示（そこから操作のメニューも開ける）
-  onLongPress(el, () => showCardDetail(detailOf(c), canPlay() ? [['操作メニュー', () => openCardMenu(iid, 0, 0)]] : []));
+  // スマホ：長押しで拡大表示（そこから操作のメニューも開ける）。長押しのまま指を動かすと移動
+  const detail = () => showCardDetail(detailOf(c), canPlay() ? [['操作メニュー', () => openCardMenu(iid, 0, 0)]] : []);
+  if (phone() && canPlay() && !zone.endsWith('-viewer')) onHoldDrag(el, iid, detail);
+  else onLongPress(el, detail);
   return el;
+}
+
+// スマホ：長押ししてそのまま指を動かすと、カードを持ち上げて離した場所の領域（data-zone）へ移す。
+// 動かさずに離したら onHold（拡大表示・メニュー）。長押しする前に指を動かしたら、ふつうのスクロール
+function onHoldDrag(el, iid, onHold) {
+  const HOLD_MS = 380;
+  let timer = null;
+  let start = null;
+  let held = false;
+  let ghost = null;
+  let target = null;
+  const reset = () => {
+    clearTimeout(timer);
+    timer = null;
+    held = false;
+    ghost?.remove();
+    ghost = null;
+    target?.classList.remove('drop-target');
+    target = null;
+    el.classList.remove('lifted');
+  };
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return reset();
+    start = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    timer = setTimeout(() => {
+      timer = null;
+      held = true;
+      el.classList.add('lifted');
+      navigator.vibrate?.(15);
+    }, HOLD_MS);
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (timer) {
+      if (Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) reset();
+      return;
+    }
+    if (!held) return;
+    // 持ち上げている間は画面をスクロールさせない
+    e.preventDefault();
+    if (!ghost) {
+      const r = el.getBoundingClientRect();
+      ghost = el.cloneNode(true);
+      ghost.classList.add('drag-ghost');
+      ghost.style.width = `${r.width}px`;
+      ghost.style.height = `${r.height}px`;
+      document.body.append(ghost);
+    }
+    ghost.style.left = `${t.clientX - ghost.offsetWidth / 2}px`;
+    ghost.style.top = `${t.clientY - ghost.offsetHeight * 0.8}px`;
+    const under = document.elementFromPoint(t.clientX, t.clientY)?.closest('[data-zone]') ?? null;
+    if (under !== target) {
+      target?.classList.remove('drop-target');
+      target = under;
+      target?.classList.add('drop-target');
+    }
+  }, { passive: false });
+  el.addEventListener('touchend', (e) => {
+    if (!held) return reset();
+    // 長押しのあとの click（タップの操作）は起こさない
+    e.preventDefault();
+    const zone = ghost ? target?.dataset.zone : null;
+    const dragged = !!ghost;
+    reset();
+    if (!dragged) onHold();
+    else if (zone) dropCard(iid, zone);
+  });
+  el.addEventListener('touchcancel', reset);
 }
 
 // カードの絵（画像がなければ文字のカード）
@@ -1487,7 +1559,7 @@ function closeViewer() {
 
 // ---------- 開始画面 ----------
 
-const deckSize = (d) => Object.entries(d.cards).reduce((n, [cid, qty]) => n + (saved.cards[cid] ? qty : 0), 0);
+const deckSize = (d) => Object.entries(d.cards).reduce((n, [cid, qty]) => n + (cardData[cid] ? qty : 0), 0);
 
 function openSetup() {
   const select = $('setup-deck');
@@ -1571,13 +1643,17 @@ function setupDropZones() {
       // シールド・マナの列はバトルゾーンの中にあるので、外側に伝えない
       e.stopPropagation();
       el.classList.remove('drop-target');
-      const iid = Number(e.dataTransfer.getData('text/plain'));
-      if (!game?.cards[iid] || zoneOf(iid) === el.dataset.zone) return;
-      // 手札からバトルゾーンへは召喚（マナを支払う）
-      if (el.dataset.zone === 'battlefield' && zoneOf(iid) === 'hand') return playFromHand(iid);
-      moveByUser(iid, el.dataset.zone);
+      dropCard(Number(e.dataTransfer.getData('text/plain')), el.dataset.zone);
     });
   }
+}
+
+// ドラッグしたカードを領域に置く（PC のドラッグ、スマホの長押しで移動）
+function dropCard(iid, zone) {
+  if (!game?.cards[iid] || zoneOf(iid) === zone) return;
+  // 手札からバトルゾーンへは召喚（マナを支払う）
+  if (zone === 'battlefield' && zoneOf(iid) === 'hand') return playFromHand(iid);
+  moveByUser(iid, zone);
 }
 
 function init() {

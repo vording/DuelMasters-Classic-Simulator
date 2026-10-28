@@ -7,26 +7,26 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=3">
-  <link rel="stylesheet" href="play.css?v=2">
-  <link rel="stylesheet" href="skin.css?v=1">
+  <link rel="stylesheet" href="theme.css?v=5">
+  <link rel="stylesheet" href="play.css?v=4">
+  <link rel="stylesheet" href="skin.css?v=3">
   <script src="device.js?v=1"></script>
-  <script src="felt.js?v=1"></script>
+  <script src="felt.js?v=2"></script>
   <script src="zoom.js?v=1"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
-  <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i><i class="fx-sweep"></i></div>
+  <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i></div>
   <div class="app">
     <header class="topbar">
-      <h1 class="logo"><span class="logo-text">デュエマ</span><small>System</small></h1>
+      <h1 class="logo"><span class="logo-text">デュエマ</span><small>CLASSIC SYSTEM</small></h1>
       <span class="game-title"><span id="deck-name"></span></span>
       <span id="net-status" class="net-status"></span>
       <span class="spacer"></span>
       <button id="undo" title="Ctrl+Z">元に戻す</button>
       <button id="restart">リスタート</button>
     </header>
-    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
 
     <main class="table">
       <!-- 左：カード・状況・フェイズ -->
@@ -103,20 +103,20 @@
             <button type="button" id="room-share">共有・コピー</button>
           </div>
           <div class="battlefield opp">
-            <div id="opp-mana" class="bf-row mana-row"></div>
-            <div id="opp-shields" class="bf-row shield-row"></div>
-            <div id="opp-main" class="bf-row"></div>
+            <div id="opp-mana" class="bf-row mana-row" data-label="MANA"></div>
+            <div id="opp-shields" class="bf-row shield-row" data-label="SHIELD"></div>
+            <div id="opp-main" class="bf-row" data-label="BATTLE ZONE"></div>
           </div>
         </div>
         <div id="banner" class="banner" hidden></div>
         <!-- 自分：手前からマナ・シールド・バトルゾーン -->
         <div class="battlefield" data-zone="battlefield">
-          <div id="bf-main" class="bf-row"></div>
-          <div id="bf-shields" class="bf-row shield-row" data-zone="shields"></div>
-          <div id="bf-mana" class="bf-row mana-row" data-zone="mana"></div>
+          <div id="bf-main" class="bf-row" data-label="BATTLE ZONE"></div>
+          <div id="bf-shields" class="bf-row shield-row" data-zone="shields" data-label="SHIELD"></div>
+          <div id="bf-mana" class="bf-row mana-row" data-zone="mana" data-label="MANA"></div>
         </div>
         <div class="hand-area" data-zone="hand">
-          <div class="zone-label">手札 <span id="hand-count"></span></div>
+          <div class="zone-label"><b>HAND</b><small>手札 <span id="hand-count"></span></small></div>
           <div id="hand" class="hand"></div>
         </div>
       </section>
@@ -124,7 +124,7 @@
       <!-- 右：ログ・コマンド -->
       <aside class="col-right">
         <section class="panel log-box">
-          <h2 class="panel-head">ログ</h2>
+          <h2 class="panel-head"><b>LOG</b><small>ログ・チャット</small></h2>
           <ol id="log" class="log chat"></ol>
           <form id="chat-form" class="chat-form" hidden autocomplete="off">
             <input id="chat-input" type="text" placeholder="メッセージ" maxlength="300">
@@ -132,7 +132,7 @@
           </form>
         </section>
         <section class="panel">
-          <h2 class="panel-head">コマンド</h2>
+          <h2 class="panel-head"><b>COMMAND</b><small>コマンド</small></h2>
           <div class="tools" id="tools">
             <button id="draw">1枚引く（D）</button>
             <button id="shuffle">シャッフル</button>
@@ -159,25 +159,21 @@
       <button type="button" data-phone-sheet="tools">コマンド</button>
     </nav>
 
-    <nav class="bottombar">
-      <a href="index.html">デッキ作成</a>
-      <span class="active">一人回し・対戦</span>
-    </nav>
   </div>
 
   <dialog id="setup" class="setup">
-    <h2 class="panel-head">ゲームの開始</h2>
+    <h2 class="panel-head"><b>GAME START</b><small>ゲームの開始</small></h2>
     <form method="dialog" id="setup-form" class="dialog-body">
       <label class="field">デッキ <select id="setup-deck"></select></label>
       <fieldset class="order well">
-        <legend>遊び方</legend>
+        <legend><b>MODE</b><small>遊び方</small></legend>
         <label><input type="radio" name="mode" value="solo" checked> 一人回し</label>
         <label><input type="radio" name="mode" value="host"> ネット対戦：部屋を作る</label>
         <label><input type="radio" name="mode" value="join"> ネット対戦：部屋に入る
           <input id="room-code" name="room" type="text" placeholder="部屋コード" maxlength="12" class="room-code"></label>
       </fieldset>
       <fieldset class="order well">
-        <legend>プレイヤー</legend>
+        <legend><b>PLAYER</b><small>プレイヤー</small></legend>
         <div class="setup-player">
           <span class="avatar" id="setup-avatar" aria-hidden="true"></span>
           <span class="setup-name name" id="setup-name"></span>
@@ -185,7 +181,7 @@
         </div>
       </fieldset>
       <fieldset class="order well">
-        <legend>順番</legend>
+        <legend><b>ORDER</b><small>先攻・後攻</small></legend>
         <label><input type="radio" name="order" value="random" checked> ランダム</label>
         <label><input type="radio" name="order" value="play"> 先攻（1ターン目はドローしない）</label>
         <label><input type="radio" name="order" value="draw"> 後攻</label>
@@ -225,10 +221,11 @@
   <div id="menu" class="menu" hidden></div>
 
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-  <script src="sound.js?v=2"></script>
-  <script src="settings.js?v=1"></script>
-  <script src="cards.js?v=6"></script>
+  <script src="sound.js?v=3"></script>
+  <script src="settings.js?v=2"></script>
+  <script src="classic-cards.js?v=2"></script>
+  <script src="cards.js?v=7"></script>
   <script src="net.js?v=1"></script>
-  <script src="play.js?v=2"></script>
+  <script src="play.js?v=3"></script>
 </body>
 </html>

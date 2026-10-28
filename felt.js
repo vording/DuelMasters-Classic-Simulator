@@ -1,33 +1,31 @@
-// 戦場（フェルト）の背景の絵：神殿・川・沼地・マグマ・森から選択。選んだものはこのブラウザに記憶する
+// 戦場の背景：グリッド・ギャラクシー・サーキット・ステージ・ミッドナイトから選択（絵は skin.css の CSS で描く）。
+// 選んだものはこのブラウザに記憶する
 (function () {
   const KEY = 'dm-deckmaker-felt';
-  const COLORS = [
-    ['temple', '神殿'],
-    ['river', '川'],
-    ['swamp', '沼地'],
-    ['magma', 'マグマ'],
-    ['forest', '森'],
+  const FIELDS = [
+    ['grid', 'グリッド'],
+    ['galaxy', 'ギャラクシー'],
+    ['circuit', 'サーキット'],
+    ['stage', 'ステージ'],
+    ['midnight', 'ミッドナイト'],
   ];
-  // 以前の単色の選択は、同じ色の絵に置き換える
-  const OLD = { white: 'temple', blue: 'river', black: 'swamp', red: 'magma', green: 'forest' };
-  const valid = (c) => COLORS.some(([id]) => id === c);
-  let current = 'temple';
+  const valid = (c) => FIELDS.some(([id]) => id === c);
+  let current = 'grid';
   try {
     const saved = localStorage.getItem(KEY);
     if (valid(saved)) current = saved;
-    else if (OLD[saved]) current = OLD[saved];
   } catch {}
   document.documentElement.dataset.felt = current;
 
-  // 画面内のすべての .felt-picker に色の丸を並べる（スマホではコマンド欄にも置く）
+  // 画面内のすべての .felt-picker に選択肢を並べる（設定画面）
   function build() {
     for (const box of document.querySelectorAll('.felt-picker')) buildBox(box);
   }
   function buildBox(box) {
-    for (const [id, name] of COLORS) {
+    for (const [id, name] of FIELDS) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = `felt-swatch felt-${id}`;
+      b.className = `felt-swatch field-${id}`;
       b.setAttribute('aria-label', `戦場の背景：${name}`);
       b.title = name;
       b.setAttribute('aria-pressed', String(id === current));
@@ -35,7 +33,7 @@
         current = id;
         document.documentElement.dataset.felt = id;
         try { localStorage.setItem(KEY, id); } catch {}
-        for (const s of document.querySelectorAll('.felt-swatch')) s.setAttribute('aria-pressed', String(s.classList.contains(`felt-${id}`)));
+        for (const s of document.querySelectorAll('.felt-swatch')) s.setAttribute('aria-pressed', String(s.classList.contains(`field-${id}`)));
       });
       box.append(b);
     }

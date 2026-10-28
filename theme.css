@@ -18,17 +18,47 @@
   --felt: #335a32;
   --felt-line: rgba(0, 0, 0, .35);
 }
-/* 戦場の背景の絵（img/bg-*.jpg）。少し暗くしてカードを見やすくする */
+/* 戦場の背景（画像を使わず CSS で描く。動かさないので軽い）。:root は戦場、.field-* は設定画面の選択肢 */
 :root[data-felt] {
-  --felt-line: rgba(255, 255, 255, .1);
-  --felt-shade: linear-gradient(rgba(0, 0, 0, .3), rgba(0, 0, 0, .3));
+  --felt-line: rgba(255, 255, 255, .14);
+  --felt-shade: linear-gradient(rgba(0, 0, 0, .18), rgba(0, 0, 0, .18));
 }
-:root[data-felt="temple"]  { --felt: #5e5544; --felt-image: url("img/bg-temple.jpg?v=2"); }
-:root[data-felt="river"]   { --felt: #1e3442; --felt-image: url("img/bg-river.jpg?v=2"); }
-:root[data-felt="swamp"]   { --felt: #1c2119; --felt-image: url("img/bg-swamp.jpg?v=2"); }
-:root[data-felt="magma"]   { --felt: #3c140a; --felt-image: url("img/bg-magma.jpg?v=2"); }
-:root[data-felt="forest"]  { --felt: #26381a; --felt-image: url("img/bg-forest.jpg?v=2"); }
-
+/* グリッド：奥に光る地平線と、青いマス目 */
+:root[data-felt="grid"], .field-grid {
+  --felt: #050f33;
+  --field: linear-gradient(180deg, rgba(5, 15, 51, 0) 30%, rgba(3, 8, 28, .85)),
+    repeating-linear-gradient(90deg, rgba(57, 208, 255, .22) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(0deg, rgba(57, 208, 255, .22) 0 1px, transparent 1px 44px),
+    radial-gradient(120% 70% at 50% 0%, #2a63e6 0%, #0b2a86 35%, #050f33 70%);
+}
+/* ギャラクシー：右上の渦と星 */
+:root[data-felt="galaxy"], .field-galaxy {
+  --felt: #040a24;
+  --field: radial-gradient(circle at 72% 30%, rgba(255, 255, 255, .9) 0 1.2%, transparent 3%),
+    radial-gradient(circle at 72% 30%, transparent 0 6%, rgba(4, 10, 36, .2) 20%, #040a24 62%),
+    conic-gradient(from 210deg at 72% 30%, #0b2a86, #3d8bff, #0b2a86, #4de3ff, #102e8f, #6aa8ff, #0b2a86);
+}
+/* サーキット：緑の基板の配線 */
+:root[data-felt="circuit"], .field-circuit {
+  --felt: #031a14;
+  --field: repeating-linear-gradient(90deg, transparent 0 58px, rgba(200, 255, 46, .18) 58px 60px, transparent 60px 120px),
+    repeating-linear-gradient(0deg, transparent 0 38px, rgba(57, 255, 170, .14) 38px 40px, transparent 40px 90px),
+    radial-gradient(circle, rgba(200, 255, 46, .35) 0 2px, transparent 3px) 0 0 / 60px 40px,
+    radial-gradient(110% 80% at 30% 20%, #0d4a36, #052a1f 55%, #031a14);
+}
+/* ステージ：下から当たる黄緑のライト（DDR 風） */
+:root[data-felt="stage"], .field-stage {
+  --felt: #0e3a10;
+  --field: repeating-conic-gradient(from 0deg at 50% 115%, rgba(255, 255, 255, .08) 0 4deg, transparent 4deg 12deg),
+    radial-gradient(circle at 50% 115%, #f2ff6a 0%, #7fd11a 28%, #1f6b14 52%, #0b2a0c 80%);
+}
+/* ミッドナイト：紫の夜空とハーフトーンのドット */
+:root[data-felt="midnight"], .field-midnight {
+  --felt: #12082e;
+  --field: radial-gradient(circle, rgba(255, 122, 217, .28) 0 30%, transparent 32%) 0 0 / 18px 18px,
+    linear-gradient(160deg, rgba(18, 8, 46, 0) 30%, #12082e 75%),
+    radial-gradient(120% 90% at 20% 10%, #5b2bb8, #261063 45%, #12082e);
+}
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
@@ -45,7 +75,7 @@ a { color: var(--ink); }
 
 /* フェルトの面（戦場・検索結果など） */
 .felt {
-  background: var(--felt-shade, none), var(--felt-image, none) center / cover no-repeat, var(--felt);
+  background: var(--felt-shade, none), var(--field, none), var(--felt);
   transition: background-color .2s;
 }
 
@@ -158,13 +188,8 @@ input[type="radio"] { accent-color: #8a8a8a; margin: 0; }
   box-shadow: 0 0 0 1px #646464;
 }
 .felt-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #ddd; }
-/* 丸いボタンには背景の絵の中央あたりを出す */
-.felt-swatch, .felt-swatch:hover:not(:disabled), .felt-swatch:active:not(:disabled) { background: var(--swatch) 50% 55% / 320% no-repeat; }
-.felt-temple  { --swatch: url("img/bg-temple.jpg?v=2"); }
-.felt-river   { --swatch: url("img/bg-river.jpg?v=2"); }
-.felt-swamp   { --swatch: url("img/bg-swamp.jpg?v=2"); }
-.felt-magma   { --swatch: url("img/bg-magma.jpg?v=2"); }
-.felt-forest  { --swatch: url("img/bg-forest.jpg?v=2"); }
+/* 丸いボタンに背景の絵を出す */
+.felt-swatch, .felt-swatch:hover:not(:disabled), .felt-swatch:active:not(:disabled) { background: var(--field), var(--felt); }
 
 .bottombar {
   display: flex;
