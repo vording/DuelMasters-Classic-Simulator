@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>デュエマ System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
+  <link rel="stylesheet" href="theme.css?v=3">
+  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="skin.css?v=1">
+  <script src="device.js?v=1"></script>
+  <script src="zoom.js?v=1"></script>
+</head>
+<body>
+  <!-- 背景で動くオブジェクト（skin.css） -->
+  <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i><i class="fx-sweep"></i></div>
+  <div class="app">
+    <header class="topbar">
+      <h1 class="logo"><span class="logo-text">デュエマ</span><small>System</small></h1>
+      <span class="spacer"></span>
+    </header>
+    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+
+    <!-- スマホ用：カード一覧とデッキの切り替え -->
+    <nav class="phone-tabs">
+      <button type="button" data-phone-tab="search">カード一覧</button>
+      <button type="button" data-phone-tab="deck">デッキ（<span id="phone-deck-count">0</span>枚）</button>
+    </nav>
+
+    <main class="layout">
+      <section class="panel search-panel">
+        <h2 class="panel-head">カード一覧 <span class="deck-total" id="card-total"></span></h2>
+        <div class="panel-body search-body">
+          <div class="search-form">
+            <input id="query" type="search" placeholder="カード名・種族・テキストで絞り込み" autocomplete="off">
+            <button type="button" id="card-new" class="primary">＋ 新しいカード</button>
+          </div>
+          <div class="civ-filter" id="civ-filter"></div>
+          <label class="toggle format-only"><input type="checkbox" id="format-only"> デッキのフォーマットで使えるカードだけ表示</label>
+          <p class="status">クリックでデッキに追加（右クリックで1枚減らす）。✎ で編集。カードはこのブラウザに保存されます。
+            <button type="button" id="card-bulk" class="link-btn">まとめて登録…</button></p>
+          <div id="results" class="results well"></div>
+          <button id="more" class="more" hidden>さらに表示</button>
+        </div>
+      </section>
+
+      <section class="panel deck-panel">
+        <h2 class="panel-head">デッキ <span class="deck-total"><span id="deck-count">0</span> / 40 枚</span></h2>
+        <div class="panel-body">
+          <div class="deck-switcher">
+            <select id="deck-select" aria-label="デッキを選択"></select>
+            <div class="format-row">
+              <label class="field">フォーマット <select id="format"></select></label>
+              <button type="button" id="reg-open" title="制限・禁止・お助けカード・プレミアム殿堂コンビ">殿堂…</button>
+            </div>
+            <p id="format-note" class="note format-note"></p>
+            <button type="button" id="reg-badge" class="reg-badge" hidden></button>
+            <div class="deck-actions">
+              <button id="deck-new">新規</button>
+              <button id="deck-rename">名前変更</button>
+              <button id="deck-copy">複製</button>
+              <button id="deck-delete">削除</button>
+            </div>
+            <button id="deck-play" class="primary play-btn">一人回し・対戦 ▶</button>
+          </div>
+          <ul id="warnings" class="warnings"></ul>
+          <h3 class="section-title">文明</h3>
+          <div id="civ-count" class="civ-count well"></div>
+          <h3 class="section-title">内訳</h3>
+          <div id="deck-stats" class="deck-stats well"></div>
+          <h3 class="section-title">コスト</h3>
+          <div id="curve" class="curve well"></div>
+          <div class="section-title-row">
+            <h3 class="section-title">デッキリスト</h3>
+            <select id="deck-sort" aria-label="並び順">
+              <option value="type">種類順</option>
+              <option value="cost">コスト順</option>
+              <option value="civ">文明順</option>
+            </select>
+            <button id="clear">クリア</button>
+          </div>
+          <div class="deck-actions io-actions">
+            <button id="export" title="「4 カード名」の形式">テキストでコピー</button>
+            <button id="import">インポート…</button>
+            <button id="share-link" title="開くとこのデッキ（カードの情報ごと）を追加できるリンク。LINE などで送れます">共有リンク</button>
+          </div>
+          <div id="deck" class="deck list"></div>
+          <div class="card-frame preview-frame dm-preview" id="preview">
+            <div class="preview-empty">カードにマウスを乗せると表示</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      非公式のファンツールです（個人・非営利の利用）。株式会社タカラトミー・Wizards of the Coast とは関係ありません。収録カードの情報と画像は<a href="https://dm.takaratomy.co.jp/card/" target="_blank" rel="noopener">デュエル・マスターズ公式サイトのカード検索</a>によります。
+    </footer>
+
+    <nav class="bottombar">
+      <span class="active">デッキ作成</span>
+      <a href="play.html">一人回し・対戦</a>
+    </nav>
+  </div>
+
+  <!-- カードの登録・編集 -->
+  <dialog id="card-dialog" class="card-dialog">
+    <h2 class="panel-head" id="card-dialog-title">新しいカード</h2>
+    <form id="card-form" class="dialog-body" autocomplete="off">
+      <div class="card-edit">
+        <div class="card-fields">
+          <label class="field">名前 <input name="name" type="text" maxlength="60" required></label>
+          <div class="field civ-field">文明 <span id="civ-checks" class="civ-checks"></span></div>
+          <div class="field-row">
+            <label class="field">コスト <input name="cost" type="number" min="0" max="99" value="1"></label>
+            <label class="field">パワー <input name="power" type="number" min="0" step="500" placeholder="—"></label>
+          </div>
+          <label class="field">種類 <select name="type"></select></label>
+          <label class="field">種族 <input name="race" type="text" maxlength="60" placeholder="例: アーマード・ドラゴン"></label>
+          <label class="field field-col">テキスト
+            <textarea name="text" rows="5" placeholder="■S・トリガー&#10;■ブロッカー&#10;■W・ブレイカー"></textarea></label>
+          <div class="field-row">
+            <label class="field">収録 <input name="set" type="text" maxlength="30" placeholder="例: DM-07"></label>
+            <label class="field">初出 <select name="era"></select></label>
+          </div>
+          <label class="field">画像のURL <input name="image" type="text" placeholder="なくても遊べます（https://…）"></label>
+          <p class="note">初出はクラシックのフォーマットの判定に使います（同名カードの初版。再録版でも初版の時代）。収録に DM-01〜30・DMC-01〜04 を書くと自動で決まります。</p>
+          <p class="note">テキストに「S・トリガー」「ブロッカー」「W・ブレイカー」「スピードアタッカー」「スレイヤー」「パワーアタッカー+2000」などを書くと、対戦で自動的に扱います（行の頭か「■」の後ろ）。</p>
+        </div>
+        <div class="card-edit-preview" id="card-edit-preview"></div>
+      </div>
+      <p id="card-error" class="status error"></p>
+      <div class="dialog-actions">
+        <button type="button" id="card-delete">削除</button>
+        <button type="button" id="card-cancel">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- クラシックの殿堂（制限・禁止・お助け・プレミアム殿堂コンビ） -->
+  <dialog id="reg-dialog" class="import-dialog reg-dialog">
+    <h2 class="panel-head" id="reg-title">殿堂</h2>
+    <form id="reg-form" class="dialog-body">
+      <p class="status">クラシックの殿堂はコミュニティで決められ、ときどき改定されます。改定されたら、カード名を1行に1枚ずつ書き換えてください（カードの名前と同じに）。</p>
+      <div class="reg-grid">
+        <label class="field-col">制限（殿堂・1枚まで）<textarea name="restricted" rows="6" spellcheck="false"></textarea></label>
+        <label class="field-col">禁止（プレミアム殿堂・0枚）<textarea name="banned" rows="6" spellcheck="false"></textarea></label>
+        <label class="field-col">お助けカード（この中から1種類を1枚だけ）<textarea name="helper" rows="6" spellcheck="false"></textarea></label>
+        <label class="field-col">プレミアム殿堂コンビ（1行に「A + B」。同時に入れられない）<textarea name="combos" rows="6" spellcheck="false"></textarea></label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="reg-reset">既定に戻す</button>
+        <button type="button" id="reg-cancel">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- まとめて登録 -->
+  <dialog id="bulk-dialog" class="import-dialog">
+    <h2 class="panel-head">カードをまとめて登録</h2>
+    <form id="bulk-form" class="dialog-body">
+      <p class="status">1行に1枚。項目は「|」で区切ります（タブ区切りでも可）。<br>
+        <code>名前|文明|コスト|種類|パワー|種族|テキスト|収録</code>（収録は省略可）<br>
+        例：<code>灼炎竜ヴォルカディア|火|6|クリーチャー|7000|アーマード・ドラゴン|■W・ブレイカー|DM-07</code><br>
+        テキストの改行は「\n」と書きます。同じ名前のカードは上書きします。</p>
+      <textarea id="bulk-text" rows="12" spellcheck="false"></textarea>
+      <p id="bulk-status" class="status import-status"></p>
+      <div class="dialog-actions">
+        <button type="button" id="bulk-cancel">閉じる</button>
+        <button type="submit" class="primary">登録</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="export-dialog" class="import-dialog">
+    <h2 class="panel-head" id="export-title">デッキリスト</h2>
+    <div class="dialog-body">
+      <textarea id="export-text" rows="14" spellcheck="false"></textarea>
+      <p id="export-status" class="status import-status"></p>
+      <div class="dialog-actions">
+        <button type="button" id="export-close">閉じる</button>
+        <button type="button" id="export-share" hidden>共有…</button>
+        <button type="button" id="export-copy" class="primary">コピー</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="import-dialog" class="import-dialog">
+    <h2 class="panel-head">デッキのインポート</h2>
+    <form id="import-form" class="dialog-body">
+      <p class="status">デッキリストを貼り付けてください。1行に1種類（例：<code>4 灼炎竜ヴォルカディア</code>）。登録済みのカードの名前と一致したものを読み込み、新しいデッキとして追加します。</p>
+      <textarea id="import-text" rows="14" spellcheck="false"></textarea>
+      <label class="field import-name">デッキ名 <input id="import-name" type="text" placeholder="空欄なら「インポート」"></label>
+      <p id="import-status" class="status import-status"></p>
+      <div class="dialog-actions">
+        <button type="button" id="import-cancel">閉じる</button>
+        <button type="submit" id="import-run" class="primary">インポート</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="sound.js?v=2"></script>
+  <script src="settings.js?v=1"></script>
+  <script src="classic-cards.js?v=2"></script>
+  <script src="cards.js?v=6"></script>
+  <script src="app.js?v=7"></script>
+</body>
+</html>

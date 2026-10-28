@@ -1,0 +1,434 @@
+/* 共通テーマ：Magic Online v3 の対戦画面風（黒〜チャコールの控えめなUI＋フェルトの戦場） */
+:root {
+  --ink: #e4e4e4;
+  --muted: #a8a8a8;
+  --bg: #323232;
+  --panel: #3a3a3a;
+  --panel-2: #404040;
+  --line: #515151;
+  --line-hi: #686868;
+  --sel: #5c5c5c;
+  --white: #ffffff;
+  --raised: inset 1px 1px #6a6a6a, inset -1px -1px #050505;
+  --sunken: inset 1px 1px #050505, inset -1px -1px #5c5c5c;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .14 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.5L5 9L9.5 3' fill='none' stroke='%23e4e4e4' stroke-width='1.6'/%3E%3C/svg%3E");
+
+  /* 戦場の色（緑・既定）。原色を避け、UIの暗いトーンに馴染むくすんだ色にする */
+  --felt: #335a32;
+  --felt-line: rgba(0, 0, 0, .35);
+}
+/* 戦場の背景の絵（img/bg-*.jpg）。少し暗くしてカードを見やすくする */
+:root[data-felt] {
+  --felt-line: rgba(255, 255, 255, .1);
+  --felt-shade: linear-gradient(rgba(0, 0, 0, .3), rgba(0, 0, 0, .3));
+}
+:root[data-felt="temple"]  { --felt: #5e5544; --felt-image: url("img/bg-temple.jpg?v=2"); }
+:root[data-felt="river"]   { --felt: #1e3442; --felt-image: url("img/bg-river.jpg?v=2"); }
+:root[data-felt="swamp"]   { --felt: #1c2119; --felt-image: url("img/bg-swamp.jpg?v=2"); }
+:root[data-felt="magma"]   { --felt: #3c140a; --felt-image: url("img/bg-magma.jpg?v=2"); }
+:root[data-felt="forest"]  { --felt: #26381a; --felt-image: url("img/bg-forest.jpg?v=2"); }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "MS UI Gothic", Tahoma, Verdana, "Meiryo UI", "Meiryo", "Hiragino Sans", sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  background: var(--bg);
+}
+
+a { color: var(--ink); }
+
+/* フェルトの面（戦場・検索結果など） */
+.felt {
+  background: var(--felt-shade, none), var(--felt-image, none) center / cover no-repeat, var(--felt);
+  transition: background-color .2s;
+}
+
+/* ---------- パネル ---------- */
+
+.panel {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid #000;
+  box-shadow: var(--raised);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 25px;
+  margin: 1px 1px 0;
+  padding: 0 7px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--ink);
+  background: #4a4a4a;
+  border-bottom: 1px solid #000;
+  box-shadow: inset 1px 1px #5e5e5e;
+}
+.panel-body { padding: 8px; }
+
+.list, .chat, .well { color: var(--ink); background: #2d2d2d; border: 1px solid #444444; box-shadow: var(--sunken); }
+
+/* カードプレビューの白い額縁 */
+.card-frame {
+  padding: 5px;
+  background: #e8e8e4;
+  border: 1px solid #000;
+  box-shadow: inset 1px 1px #fff, inset -1px -1px #9a9a96;
+}
+
+/* ---------- ボタン（控えめ） ---------- */
+
+button {
+  font: 14px "MS UI Gothic", Tahoma, Verdana, "Meiryo UI", "Meiryo", sans-serif;
+  color: var(--ink);
+  background: #464646;
+  border: 1px solid #000;
+  border-radius: 0;
+  box-shadow: var(--raised);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: #4c4c4c; }
+button:active:not(:disabled) { background: #404040; box-shadow: var(--sunken); }
+button:focus-visible { outline: 1px solid #aaa; outline-offset: 1px; }
+button:disabled { color: #8a8a8a; cursor: default; }
+button.primary { color: var(--white); font-weight: bold; outline: 1px solid #747474; outline-offset: -1px; }
+
+/* ---------- 入力 ---------- */
+
+input[type="search"], input[type="text"], select {
+  font: 14px "MS UI Gothic", Tahoma, Verdana, "Meiryo UI", "Meiryo", sans-serif;
+  color: var(--ink);
+  background: #2d2d2d;
+  border: 1px solid #444444;
+  border-radius: 0;
+  box-shadow: var(--sunken);
+  padding: 3px 5px;
+}
+input:focus, select:focus { outline: 1px dotted #8a8a8a; outline-offset: -3px; }
+select option, select optgroup { background: #3a3a3a; color: var(--ink); }
+::placeholder { color: #686868; }
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  flex: none;
+  background: #2d2d2d center / 10px no-repeat;
+  border: 1px solid #444444;
+  box-shadow: var(--sunken);
+  cursor: pointer;
+}
+input[type="checkbox"]:checked { background-image: var(--check); }
+input[type="radio"] { accent-color: #8a8a8a; margin: 0; }
+
+/* ---------- 上下のバー ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 36px;
+  padding: 3px 10px;
+  background: #3e3e3e;
+  border-bottom: 1px solid #000;
+  box-shadow: inset 0 -1px #4a4a4a;
+}
+.logo { margin: 0; font-size: 15px; font-weight: bold; white-space: nowrap; color: var(--ink); }
+.logo small { margin-left: 6px; font-size: 14px; font-weight: normal; color: var(--muted); }
+.spacer { flex: 1; }
+
+/* 戦場の色の切り替え */
+.felt-picker { display: flex; align-items: center; gap: 4px; color: var(--muted); white-space: nowrap; }
+.felt-swatch, .felt-swatch:hover:not(:disabled), .felt-swatch:active:not(:disabled) {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid #000;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #646464;
+}
+.felt-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #ddd; }
+/* 丸いボタンには背景の絵の中央あたりを出す */
+.felt-swatch, .felt-swatch:hover:not(:disabled), .felt-swatch:active:not(:disabled) { background: var(--swatch) 50% 55% / 320% no-repeat; }
+.felt-temple  { --swatch: url("img/bg-temple.jpg?v=2"); }
+.felt-river   { --swatch: url("img/bg-river.jpg?v=2"); }
+.felt-swamp   { --swatch: url("img/bg-swamp.jpg?v=2"); }
+.felt-magma   { --swatch: url("img/bg-magma.jpg?v=2"); }
+.felt-forest  { --swatch: url("img/bg-forest.jpg?v=2"); }
+
+.bottombar {
+  display: flex;
+  align-items: stretch;
+  height: 26px;
+  background: #3e3e3e;
+  border-top: 1px solid #000;
+  box-shadow: inset 0 1px 0 #4a4a4a;
+}
+.bottombar a, .bottombar span {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  border-right: 1px solid #000;
+}
+.bottombar a:hover { color: var(--ink); }
+.bottombar .active { color: var(--ink); font-weight: bold; background: #343434; box-shadow: var(--sunken); }
+
+/* ---------- ダイアログ ---------- */
+
+dialog {
+  padding: 0;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid #000;
+  border-radius: 0;
+  box-shadow: var(--raised), 3px 3px 0 rgba(0, 0, 0, .55);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .5); }
+.dialog-body { padding: 10px 12px 12px; }
+.dialog-actions { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 10px; }
+.dialog-actions a { margin-right: auto; }
+.dialog-actions button { min-width: 76px; }
+dialog .status, dialog .hint { color: var(--muted); }
+
+* { scrollbar-color: #646464 #343434; scrollbar-width: thin; }
+
+/* ---------- 画面いっぱいの枠 ----------
+   ウィンドウ全体を使う。枠の中のサイズ指定は cqw / cqh（枠の幅・高さに対する割合）を使う */
+html, body { height: 100%; }
+.app {
+  container-type: size;
+  overflow: hidden;
+  background: var(--bg);
+}
+html:not(.phone) body { overflow: hidden; }
+html:not(.phone) .app { width: 100vw; height: 100vh; height: 100dvh; }
+
+/* ---------- スマホ（device.js が <html class="phone"> にする） ----------
+   指で押しやすい大きさにする */
+html.phone body { overflow: hidden; }
+html.phone .app { width: 100vw; height: 100vh; height: 100dvh; }
+html.phone button { min-height: 32px; padding: 4px 10px; }
+/* iOS は 16px 未満の入力欄に触れると拡大してしまう */
+html.phone input[type="search"], html.phone input[type="text"], html.phone select { font-size: 16px; }
+html.phone .topbar { gap: 8px; padding: 4px 6px; flex-wrap: wrap; }
+html.phone .logo small { display: none; }
+html.phone .felt-swatch { width: 22px; height: 22px; min-height: 0; }
+html.phone .card, html.phone .card img, html.phone .result img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+html.phone .row .name { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* スマホ：長押しで出すカードの拡大表示（zoom.js） */
+.card-detail { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; background: transparent; border: 0; box-shadow: none; }
+.card-detail::backdrop { background: rgba(0, 0, 0, .85); }
+.card-detail-body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; height: 100%; padding: 16px; }
+.card-detail-card img, .card-detail-card .text {
+  display: block;
+  width: min(92vw, calc((100dvh - 140px) * 488 / 680));
+  border-radius: 4.75% / 3.5%;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.card-detail-card .text { aspect-ratio: 488 / 680; padding: 16px; color: #111; font-size: 18px; background: #e8e8e4; }
+.card-detail-name { color: var(--ink); font-size: 15px; text-align: center; }
+.card-detail-text:empty { display: none; }
+/* 効果テキストがあるときは、その分だけ画像を小さくする */
+.card-detail-body:has(.card-detail-text:not(:empty)) .card-detail-card img,
+.card-detail-body:has(.card-detail-text:not(:empty)) .card-detail-card .text { width: min(92vw, calc((76dvh - 160px) * 488 / 680)); }
+.card-detail-text {
+  width: min(92vw, 420px);
+  max-height: 24dvh;
+  overflow: auto;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--ink);
+  background: rgba(40, 40, 40, .92);
+  border: 1px solid #000;
+}
+.card-detail-actions { display: flex; gap: 10px; }
+.card-detail-actions:empty { display: none; }
+.card-detail-actions button { min-width: 110px; min-height: 40px; font-size: 15px; }
+
+/* ロゴ（文字）。スマホは小さくして「System」を省く */
+.logo { display: flex; align-items: baseline; }
+.logo-text {
+  font: 900 20px "Meiryo", "Hiragino Sans", sans-serif;
+  letter-spacing: .04em;
+  color: #fff;
+  background: linear-gradient(180deg, #ffe58a, #f0a020 55%, #c0501a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(1px 1px 0 #000);
+}
+html.phone .logo-text { font-size: 17px; }
+
+/* ---------- 文明の色・カードの絵（cards.js の cardFace） ---------- */
+:root {
+  --civ-light: #e9d77c;
+  --civ-water: #4f93d8;
+  --civ-dark: #6b5a7a;
+  --civ-fire: #d4493a;
+  --civ-nature: #49a055;
+  --civ-zero: #a8a8a8;
+}
+.civ-light { --civ: var(--civ-light); }
+.civ-water { --civ: var(--civ-water); }
+.civ-dark { --civ: var(--civ-dark); }
+.civ-fire { --civ: var(--civ-fire); }
+.civ-nature { --civ: var(--civ-nature); }
+.civ-zero { --civ: var(--civ-zero); }
+
+.dm-face {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 488 / 680;
+  overflow: hidden;
+  container-type: inline-size;
+  color: #1c1c1c;
+  border: 3px solid transparent;
+  border-radius: 5px;
+  /* 枠を文明の色にする（多色は斜めに塗り分ける） */
+  background: linear-gradient(#efeee8, #efeee8) padding-box, var(--civ-bg, var(--civ-zero)) border-box;
+}
+.dm-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dm-face.img-ok > span { display: none; }
+.dm-face .dm-cost {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  min-width: 22cqw;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  font: bold 14cqw/1 Arial, Helvetica, sans-serif;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+  background: var(--civ-bg, var(--civ-zero));
+  border: 1px solid #000;
+  border-radius: 50%;
+}
+.dm-face .dm-name {
+  position: absolute;
+  top: 4%;
+  left: 28cqw;
+  right: 3px;
+  font-size: max(8px, 9cqw);
+  font-weight: bold;
+  line-height: 1.2;
+  max-height: 3.6em;
+  overflow: hidden;
+}
+.dm-face .dm-type {
+  position: absolute;
+  top: 36%;
+  left: 4px;
+  right: 4px;
+  font-size: max(7px, 7cqw);
+  line-height: 1.25;
+  color: #555;
+  max-height: 2.5em;
+  overflow: hidden;
+}
+.dm-face .dm-tags {
+  position: absolute;
+  top: 55%;
+  left: 4px;
+  right: 4px;
+  font-size: max(7px, 7.5cqw);
+  font-weight: bold;
+  line-height: 1.3;
+  color: #7a2a1a;
+  max-height: 4em;
+  overflow: hidden;
+}
+.dm-face .dm-power {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  padding: 0 4px;
+  font: bold max(9px, 11cqw)/1.2 Arial, Helvetica, sans-serif;
+  color: #fff;
+  background: #222;
+  border-radius: 3px;
+}
+/* 裏向きのカード（シールド・相手の手札など） */
+.dm-back {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #000;
+  border-radius: 5px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 220, 120, .55) 0 18%, transparent 19%),
+    repeating-linear-gradient(45deg, #1f3f8a 0 6px, #17306c 6px 12px);
+  box-shadow: inset 0 0 0 3px #0c1a3c;
+}
+/* ---------- 設定（settings.js） ---------- */
+
+/* 上のバーの歯車 */
+.settings-btn {
+  flex: none;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  background: #464646 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e4e4e4' fill-rule='evenodd' d='M10.3 2h3.4l.5 2.6 1.8.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.8 2.6.5v3.4l-2.6.5-.8 1.8 1.5 2.2-2.4 2.4-2.2-1.5-1.8.8-.5 2.6h-3.4l-.5-2.6-1.8-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.8L2 13.7v-3.4l2.6-.5.8-1.8-1.5-2.2 2.4-2.4 2.2 1.5 1.8-.8zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z'/%3E%3C/svg%3E") center / 18px no-repeat;
+}
+.settings-btn:hover:not(:disabled) { background-color: #4c4c4c; }
+.settings-btn:active:not(:disabled) { background-color: #404040; }
+html.phone .settings-btn { width: 32px; min-height: 32px; padding: 0; }
+
+.settings { width: min(460px, 94vw); max-height: 92vh; max-height: 92dvh; }
+.settings[open] { display: flex; flex-direction: column; }
+.settings .dialog-body { overflow-y: auto; }
+.settings-group { margin: 0 0 8px; padding: 6px 12px 10px; }
+.settings-group legend { padding: 0 4px; color: var(--muted); }
+.settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.settings-row label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.settings-row input[type="text"] { flex: 1; min-width: 0; max-width: 220px; }
+.settings-row input[type="range"] { flex: 1; min-width: 100px; max-width: 220px; accent-color: #8a8a8a; }
+.settings-row input[type="range"]:disabled { opacity: .4; }
+.settings-value { min-width: 3em; color: var(--muted); }
+.settings .note { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.settings .status { margin: 6px 0 0; }
+.settings .status:empty { display: none; }
+.dice-btn { padding: 0 6px; font-size: 16px; line-height: 22px; }
+.settings-felt { gap: 10px; margin-top: 6px; }
+html .settings .felt-swatch, html .settings .felt-swatch:hover:not(:disabled), html .settings .felt-swatch:active:not(:disabled) { width: 32px; height: 32px; min-height: 0; }
+html.phone .settings .felt-swatch, html.phone .settings .felt-swatch:hover:not(:disabled), html.phone .settings .felt-swatch:active:not(:disabled) { width: 36px; height: 36px; }
+html .settings .lang-btn, html .settings .lang-btn:hover:not(:disabled), html .settings .lang-btn:active:not(:disabled) { width: 26px; height: 26px; min-height: 0; }
+html.phone .settings .lang-btn, html.phone .settings .lang-btn:hover:not(:disabled), html.phone .settings .lang-btn:active:not(:disabled) { width: 30px; height: 30px; }
+
+/* アバターの選択。数が多いので、3行ほどの高さでスクロールさせる */
+.avatar-choices { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 8px; max-height: 170px; overflow-y: auto; padding: 3px; }
+.avatar-choices label { position: relative; margin: 0; }
+.avatar-choices input { position: absolute; opacity: 0; }
+.avatar-choices .avatar {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  opacity: .55;
+  cursor: pointer;
+  background: #404040 center / cover no-repeat;
+  border: 1px solid #444444;
+}
+.avatar-choices input:checked + .avatar { opacity: 1; outline: 2px solid #ddd; outline-offset: 1px; }
+.avatar-choices input:focus-visible + .avatar { outline: 2px dotted #ddd; }
