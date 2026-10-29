@@ -36,7 +36,6 @@
 .deck-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .deck-actions button { flex: 1 1 0; padding-left: 4px; padding-right: 4px; white-space: nowrap; }
 .format-row { display: flex; gap: 6px; }
-.format-row select { flex: 1; min-width: 0; }
 .play-btn { width: 100%; padding: 6px; }
 /* ここから下だけスクロールする */
 .deck-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 12px; }
@@ -110,3 +109,8 @@ html.phone .import-dialog textarea { font-size: 16px; min-height: 180px; }
 html.phone .reg-grid { grid-template-columns: 1fr; }
 html.phone .section-title { white-space: nowrap; }
 html.phone .section-title-row .section-title small { display: none; }
+
+/* カード名のクリックで詳細 */
+.row .name { cursor: pointer; }
+
+.format-name { flex: 1; align-self: center; font-weight: 800; color: var(--lime); }

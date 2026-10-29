@@ -160,8 +160,12 @@ const Settings = (() => {
     dialog.id = 'settings';
     dialog.className = 'settings';
     // 戦場の背景は、背景を選べる画面（felt.js を読み込んだ画面）だけに出す
+    // 自動でターン終了も、一人回し・対戦画面だけ
     const felt = document.documentElement.dataset.felt
-      ? `<fieldset class="settings-group well"><legend><b>FIELD</b><small>戦場の背景</small></legend><div class="felt-picker settings-felt"></div></fieldset>`
+      ? `<fieldset class="settings-group well"><legend><b>FIELD</b><small>戦場の背景</small></legend><div class="felt-picker settings-felt"></div></fieldset>
+        <fieldset class="settings-group well"><legend><b>AUTO</b><small>自動</small></legend>
+          <div class="settings-row"><label><input type="checkbox" id="settings-autoend"> 攻撃し終えたら、3秒後に自動でターン終了</label></div>
+        </fieldset>`
       : '';
     dialog.innerHTML = `
       <h2 class="panel-head"><b>SETTINGS</b><small>設定</small></h2>
@@ -224,6 +228,9 @@ const Settings = (() => {
       Sound.play('button');
     });
 
+    $('settings-autoend')?.addEventListener('change', (e) => {
+      try { localStorage.setItem('dm-deckmaker-autoend', e.target.checked ? 'on' : 'off'); } catch {}
+    });
     $('settings-sound').addEventListener('change', (e) => {
       Sound.setOn(e.target.checked);
       renderVolume();
@@ -268,6 +275,9 @@ const Settings = (() => {
     const current = $('settings-avatars').querySelector(`input[value="${avatar()}"]`);
     if (current) current.checked = true;
     $('settings-sound').checked = Sound.on;
+    if ($('settings-autoend')) {
+      try { $('settings-autoend').checked = localStorage.getItem('dm-deckmaker-autoend') !== 'off'; } catch {}
+    }
     $('settings-volume').value = String(Math.round(Sound.volume * 100));
     renderVolume();
     status('');

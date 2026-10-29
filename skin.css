@@ -100,6 +100,7 @@ body { font-weight: 500; color: var(--ink); }
 
 .topbar {
   position: relative;
+  z-index: 3; /* はみ出したロゴを下の帯より手前に */
   gap: 16px;
   min-height: 44px;
   padding: 4px 12px;
@@ -110,14 +111,8 @@ body { font-weight: 500; color: var(--ink); }
 }
 .topbar .game-title, .topbar .net-status { color: #1b2f5c; }
 .logo { display: flex; align-items: center; gap: 8px; }
-.logo-text {
-  font: 900 24px/1 var(--font-ui);
-  font-style: italic;
-  color: var(--blue);
-  -webkit-text-stroke: 1px #0a2a7a;
-  filter: drop-shadow(1.5px 1.5px 0 #fff) drop-shadow(2px 3px 0 rgba(10, 30, 90, .4));
-  transform: skewX(-8deg);
-}
+/* ロゴは帯より少し大きくして、上下にはみ出させる（竜の絵が薄いので文字を大きく見せる） */
+.logo-img { height: 58px; margin: 0 0 -14px -4px; transform: translateY(5px); filter: drop-shadow(0 2px 2px rgba(10, 30, 90, .35)); }
 .logo small { color: #2b4f9a; font: 400 11px var(--font-en); letter-spacing: .14em; }
 .logo::after {
   content: "";
@@ -164,8 +159,8 @@ body { font-weight: 500; color: var(--ink); }
 .settings-btn:hover:not(:disabled) { transform: rotate(90deg); }
 
 /* 上のバーの下を流れる帯 */
-.ticker { position: relative; z-index: 2; height: 16px; overflow: hidden; color: #0a1838; white-space: nowrap; background: linear-gradient(90deg, var(--lime), var(--lime-2)); border-bottom: 1px solid #000; }
-.ticker span { display: inline-block; font: 400 11px/16px var(--font-en); letter-spacing: .2em; will-change: transform; animation: ticker 36s linear infinite; }
+.ticker { position: relative; z-index: 2; display: flex; align-items: center; height: 16px; overflow: hidden; color: #0a1838; white-space: nowrap; background: linear-gradient(90deg, var(--lime), var(--lime-2)); border-bottom: 1px solid #000; }
+.ticker span { display: block; flex: none; font: 400 11px/16px var(--font-en); letter-spacing: .2em; will-change: transform; animation: ticker 36s linear infinite; }
 
 .bottombar { display: none; }
 
@@ -301,23 +296,6 @@ button.civ-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
 .deck-stats .stat.strong b { color: var(--lime); }
 .play-btn b { margin-right: 6px; font-size: 15px; }
 
-.reg-badge, .reg-badge:hover:not(:disabled), .reg-badge:active:not(:disabled), .reg-badge:disabled {
-  width: 100%;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 800;
-  text-align: left;
-  color: #08122e;
-  border: 1px solid #000;
-  border-radius: 14px;
-  box-shadow: none;
-}
-.reg-badge:disabled { cursor: default; }
-.reg-badge.ok.fmt-base { background: #9fd3a2; }
-.reg-badge.ok.fmt-c05 { background: #9cc6ef; }
-.reg-badge.ok.fmt-c08 { background: #e8c27a; }
-.reg-badge.issues { background: #f0a08c; }
-
 .hover-preview { background: #0a1a46; border: 1px solid var(--cyan); border-radius: 12px; box-shadow: 0 12px 30px rgba(0, 0, 0, .6); }
 .hover-preview p { color: var(--ink); }
 
@@ -346,7 +324,6 @@ button.civ-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
   color: rgba(255, 255, 255, .45);
   pointer-events: none;
 }
-.battlefield.opp .bf-row[data-label]::before { top: auto; bottom: -1px; }
 
 .hand-area { background: rgba(5, 12, 36, .92); border-top: 2px solid var(--blue); }
 .zone-label { display: flex; align-items: baseline; gap: 6px; color: #08122e; background: linear-gradient(90deg, var(--lime), var(--lime-2) 60%, transparent); border-bottom: 1px solid #08122e; box-shadow: none; }
@@ -386,6 +363,13 @@ button.civ-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
   box-shadow: inset 0 0 0 2px rgba(57, 208, 255, .55);
 }
 
+/* 自分でタップして選んだマナ：手札はそのマナで払えるものだけ明るく、ほかは暗くする */
+.card.mana-card.pooled { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.card.mana-card.pooled .dm-face { filter: none; }
+.hand .card.unpayable .dm-face { filter: grayscale(1) brightness(.45); }
+.hand .card.payable { outline: 2px solid var(--lime); outline-offset: 2px; }
+.hand .card.payable:hover { transform: translateY(-8px); }
+
 /* マナゾーンのカードは上下を逆さに置く（タップすると横向き） */
 .mana-row .card { transform: rotate(180deg); }
 .mana-row .card.tapped { transform: rotate(270deg); }
@@ -399,6 +383,80 @@ button.civ-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
 .banner { color: var(--ink); background: #0a1a46; border: 1px solid var(--lime); border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
 body.online .banner { border-radius: 0; border-width: 1px 0; box-shadow: none; background: linear-gradient(90deg, rgba(31, 107, 255, .8), #0a1a46); }
 .banner .banner-title { color: var(--lime); font-style: italic; }
+/* 割るシールドを選ぶ：相手のシールドが点滅し、選んだものに印 */
+.card.shield.pickable { cursor: pointer; outline: 2px dashed var(--lime); outline-offset: 2px; animation: atk-blink .8s steps(2) infinite; }
+.card.shield.pickable:hover { transform: translateY(4px); }
+.card.shield.picked { outline: 3px solid var(--pink); animation: none; transform: translateY(6px); }
+.card.shield.picked::after {
+  content: "BREAK";
+  position: absolute;
+  inset: auto 0 40% 0;
+  font: 400 10px var(--font-en);
+  text-align: center;
+  color: #fff;
+  background: var(--pink);
+}
+
+/* 処理中の呪文：戦場の中央に浮かせて置く（効果を処理し終えたら「処理完了」） */
+.resolving-row.mine {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 6;
+  display: flex;
+  gap: 14px;
+  padding: 18px 16px 12px;
+  background: rgba(8, 20, 54, .92);
+  border: 2px solid var(--cyan);
+  border-radius: 16px;
+  box-shadow: 0 0 24px rgba(57, 208, 255, .5), 0 12px 30px rgba(0, 0, 0, .5);
+  transform: translate(-50%, -50%);
+  animation: resolve-in .3s cubic-bezier(.2, .9, .25, 1.2) both;
+}
+.resolving-row.mine[hidden] { display: none; }
+.resolving-row::before {
+  content: attr(data-label);
+  position: absolute;
+  left: 12px;
+  top: 3px;
+  font: 400 10px var(--font-en);
+  letter-spacing: .18em;
+  color: var(--cyan);
+}
+.resolving-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.resolving-item .card { --w: calc(var(--card-w) * 1.5); }
+.resolving-item button { min-width: 100px; }
+@keyframes resolve-in { from { opacity: 0; transform: translate(-50%, -40%) scale(.85); } }
+/* 相手が処理中の呪文（相手の戦場の手前に並べる） */
+.resolving-row.opp { position: relative; padding: 14px 8px 6px; border: 1px dashed var(--cyan); border-radius: 10px; }
+.resolving-row.opp .card { box-shadow: 0 0 12px rgba(57, 208, 255, .6); }
+
+/* S・トリガー：画面の中央にカードを大きく出し、まわりを暗くして止める（対戦中の帯の表示より優先） */
+.banner.trigger, body.online .banner.trigger {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 90;
+  flex-direction: column;
+  gap: 10px;
+  width: min(340px, 90vw);
+  max-width: none;
+  padding: 16px 18px 18px;
+  font-size: 14px;
+  text-align: center;
+  background: #0a1a46;
+  border: 2px solid var(--lime);
+  border-radius: 18px;
+  box-shadow: 0 0 0 100vmax rgba(2, 6, 20, .6), 0 0 30px rgba(200, 255, 46, .45);
+  transform: translate(-50%, -50%);
+  animation: trigger-in .3s cubic-bezier(.2, .9, .25, 1.2) both;
+}
+.banner.trigger .trigger-title { font: 400 22px var(--font-en); font-style: italic; letter-spacing: .06em; color: var(--lime); }
+.banner.trigger .dm-face { width: min(170px, 46vw); }
+.banner.trigger .banner-title { flex-basis: auto; color: #fff; font-style: normal; }
+.banner.trigger .choices { display: flex; gap: 12px; }
+.banner.trigger .choices button { min-width: 110px; min-height: 40px; font-size: 16px; }
+@keyframes trigger-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.8) rotate(-2deg); } }
 .log li:last-child { color: var(--lime); }
 .log .t { color: var(--cyan); font-family: var(--font-en); font-size: 11px; }
 .room-banner { background: #0a1a46; border: 1px solid var(--lime); border-radius: 14px; }
@@ -409,7 +467,7 @@ body.online .banner { border-radius: 0; border-width: 1px 0; box-shadow: none; b
 
 html.phone .topbar { gap: 8px; min-height: 44px; padding: 4px 8px; }
 html.phone .logo small, html.phone .logo::after, html.phone .nav small, html.phone .topbar .game-title { display: none; }
-html.phone .logo-text { font-size: 19px; }
+html.phone .logo-img { height: 46px; margin: 0 0 -10px -4px; transform: translateY(4px); }
 html.phone .nav a, html.phone .nav span { padding: 4px 9px; }
 html.phone .nav b { font-size: 12px; }
 html.phone .phone-bar { background: rgba(5, 12, 36, .96); border-top: 2px solid var(--blue); }
@@ -471,3 +529,25 @@ html.phone body[data-sheet="log"] .col-right, html.phone body[data-sheet="tools"
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- カードの効果（effects.js）：選ぶ画面 ---------- */
+.fx-dialog { width: min(760px, 96vw); }
+.fx-dialog .dialog-body { max-height: calc(92dvh - 40px); overflow-y: auto; }
+.fx-head { display: flex; gap: 10px; align-items: flex-start; }
+.fx-face:empty { display: none; }
+.fx-face .dm-face { width: 84px; flex: none; }
+.fx-text { flex: 1; margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); white-space: pre-line; }
+.fx-title { margin: 10px 0 6px; font-weight: 800; color: var(--lime); }
+.fx-cards { display: flex; flex-wrap: wrap; gap: 8px; max-height: 50vh; overflow: auto; padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, .25); }
+.fx-cards .card.fx-pick { --card-w: 96px; position: relative; padding: 0; border: 0; background: none; box-shadow: none; cursor: pointer; transition: transform .12s, filter .12s; }
+.fx-cards .card.fx-pick:disabled { cursor: default; opacity: 1; }
+.fx-cards .card.fx-pick.tapped { transform: none; filter: brightness(.75); }
+.fx-cards .card.fx-pick.picked { transform: translateY(-6px); outline: 3px solid var(--lime); outline-offset: 2px; border-radius: 8px; }
+.fx-cards .fx-side { position: absolute; top: 4px; left: 4px; padding: 1px 6px; font-size: 11px; font-weight: 800; color: #fff; background: #d0342c; border-radius: 8px; }
+.fx-cards .fx-num { position: absolute; inset: auto 0 6px; text-align: center; font: 400 18px var(--font-en); color: #fff; text-shadow: 0 1px 3px #000; }
+.card .fx-buff { position: absolute; left: 2px; right: 2px; bottom: 2px; padding: 1px 4px; font-size: 10px; font-weight: 800; text-align: center; color: #08122e; background: var(--lime); border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+html.phone .fx-cards .card.fx-pick { --card-w: 72px; }
+html.phone .fx-face .dm-face { width: 60px; }.card .fx-power { position: absolute; top: 2px; right: 2px; padding: 0 5px; font: 400 11px var(--font-en); color: #fff; background: #d0342c; border: 1px solid #fff; border-radius: 8px; pointer-events: none; }
+/* スマホ：触れて動かすとすぐドラッグ（手札は横スクロールを残す） */
+html.phone .card[data-drag] { touch-action: none; }
+html.phone .hand .card[data-drag] { touch-action: pan-x; }

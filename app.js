@@ -19,24 +19,18 @@ const allCards = () => Object.values(CARDS);
 const byCostName = (a, b) => a.cost - b.cost || a.name.localeCompare(b.name, 'ja');
 const phone = () => window.isPhone?.() ?? false;
 
-// ---------- フォーマット（クラシック）と殿堂 ----------
+// ---------- 殿堂（クラシック基本編） ----------
 
-const deckFormat = (d = activeDeck()) => DM.formatOf(d.format);
-// 殿堂の一覧 { restricted: [名前], banned: [名前], helper: [名前], combos: [[名前, 名前]] }
+// 殿堂の一覧 { restricted: [名前], banned: [名前] }
 // 「殿堂…」で書き換えていればそれを、なければ既定の一覧（cards.js）を使う
-const regOf = (fmt) => ({ restricted: [], banned: [], helper: [], combos: [], ...(state.regulations?.[fmt.id] ?? DM.REGULATIONS[fmt.id]) });
+const reg = () => ({ restricted: [], banned: [], ...(state.regulation ?? DM.REGULATION) });
 
-// 同じカードを入れられる枚数（禁止は0、制限・お助けは1）
-function maxCopies(card, fmt = deckFormat()) {
-  if (!fmt.era) return DM.MAX_COPIES;
-  const reg = regOf(fmt);
-  if (reg.banned.includes(card.name)) return 0;
-  if (reg.restricted.includes(card.name) || reg.helper.includes(card.name)) return 1;
+// 同じカードを入れられる枚数（禁止は0、制限は1）
+function maxCopies(card) {
+  if (reg().banned.includes(card.name)) return 0;
+  if (reg().restricted.includes(card.name)) return 1;
   return DM.MAX_COPIES;
 }
-
-const inEra = (card, fmt = deckFormat()) => !fmt.era || DM.eraRank(card.era) <= fmt.era;
-const usableIn = (card, fmt = deckFormat()) => inEra(card, fmt) && maxCopies(card, fmt) > 0;
 
 // ---------- デッキ操作 ----------
 
@@ -70,7 +64,7 @@ function switchDeck(id) {
 function createDeck() {
   const name = prompt('新しいデッキの名前', `デッキ${nextDeckId()}`);
   if (name === null) return;
-  const deck = { id: nextDeckId(), name: name.trim() || `デッキ${nextDeckId()}`, format: activeDeck().format, cards: {} };
+  const deck = { id: nextDeckId(), name: name.trim() || `デッキ${nextDeckId()}`, cards: {} };
   state.decks.push(deck);
   switchDeck(deck.id);
 }
@@ -85,7 +79,7 @@ function renameDeck() {
 
 function copyDeck() {
   const src = activeDeck();
-  const deck = { id: nextDeckId(), name: `${src.name}のコピー`, format: src.format, sort: src.sort, cards: { ...src.cards } };
+  const deck = { id: nextDeckId(), name: `${src.name}のコピー`, sort: src.sort, cards: { ...src.cards } };
   state.decks.push(deck);
   switchDeck(deck.id);
 }
@@ -94,88 +88,36 @@ function deleteDeck() {
   const deck = activeDeck();
   if (!confirm(`「${deck.name}」を削除しますか？`)) return;
   state.decks = state.decks.filter((d) => d !== deck);
-  if (!state.decks.length) state.decks.push({ id: 1, name: 'デッキ1', format: 'c08', cards: {} });
+  if (!state.decks.length) state.decks.push({ id: 1, name: 'デッキ1', cards: {} });
   switchDeck(state.decks[0].id);
 }
 
-// size: false なら枚数（40枚ちょうど）の警告を出さない（レギュレーションのバッジで使う）
-function deckWarnings(fmt = deckFormat(), { size = true } = {}) {
+function deckWarnings() {
   const total = deckTotal();
   const warnings = [];
-  if (size && total !== DM.DECK_SIZE) warnings.push(`デッキはちょうど${DM.DECK_SIZE}枚です（現在${total}枚）`);
-  const reg = regOf(fmt);
-  const entries = deckEntries();
-  for (const { card, qty } of entries) {
-    if (!inEra(card, fmt)) warnings.push(`${card.name} は${fmt.name}で使用できません（初出：${card.set}）`);
-    const max = maxCopies(card, fmt);
-    if (max === 0) warnings.push(`${card.name} は${fmt.name}の禁止カードです`);
-    else if (qty > max) warnings.push(`${card.name} は${max}枚までです${max === 1 ? `（${reg.helper.includes(card.name) ? 'お助けカード' : '制限カード'}）` : ''}`);
-  }
-  if (fmt.era) {
-    const helpers = entries.filter((e) => reg.helper.includes(e.card.name));
-    if (helpers.length > 1) warnings.push(`お助けカードは1種類だけです（${helpers.map((e) => e.card.name).join('、')}）`);
-    const names = new Set(entries.map((e) => e.card.name));
-    for (const [a, b] of reg.combos) {
-      if (names.has(a) && names.has(b)) warnings.push(`プレミアム殿堂コンビ：${a} と ${b} は同時に入れられません`);
-    }
+  if (total !== DM.DECK_SIZE) warnings.push(`デッキはちょうど${DM.DECK_SIZE}枚です（現在${total}枚）`);
+  for (const { card, qty } of deckEntries()) {
+    const max = maxCopies(card);
+    if (max === 0) warnings.push(`${card.name} は禁止カードです`);
+    else if (qty > max) warnings.push(`${card.name} は${max}枚までです${max === 1 ? '（殿堂）' : ''}`);
   }
   return warnings;
-}
-
-// レギュレーションのバッジ：採用カードの初出から、デッキが入る一番狭いクラシックのフォーマットを決める
-// { fmt, issues: そのフォーマットの殿堂の違反数 }。デッキが空なら null
-function fittingFormat() {
-  const cards = deckEntries().map((e) => e.card);
-  if (!cards.length) return null;
-  const rank = Math.max(...cards.map((c) => DM.eraRank(c.era)));
-  const fmt = DM.FORMATS.find((f) => f.era && f.era >= rank) ?? DM.formatOf('c08');
-  return { fmt, issues: deckWarnings(fmt, { size: false }).length };
-}
-
-function renderBadge() {
-  const fit = fittingFormat();
-  const badge = $('reg-badge');
-  badge.hidden = !fit;
-  if (!fit) return;
-  const switchTo = deckFormat().id !== fit.fmt.id;
-  badge.className = `reg-badge ${fit.issues ? 'issues' : 'ok'} fmt-${fit.fmt.id}`;
-  badge.textContent = `${fit.fmt.name}で組めるデッキ${fit.issues ? `（殿堂の違反${fit.issues}件）` : ''}${switchTo ? ' ▶ このフォーマットにする' : ''}`;
-  badge.disabled = !switchTo;
-  badge.onclick = () => {
-    activeDeck().format = fit.fmt.id;
-    update();
-  };
 }
 
 // ---------- 殿堂の編集 ----------
 
 function openRegulations() {
-  const fmt = deckFormat();
-  if (!fmt.era) return;
-  const reg = regOf(fmt);
   const form = $('reg-form');
-  $('reg-title').textContent = `${fmt.name}の殿堂`;
-  form.elements.restricted.value = reg.restricted.join('\n');
-  form.elements.banned.value = reg.banned.join('\n');
-  form.elements.helper.value = reg.helper.join('\n');
-  form.elements.combos.value = reg.combos.map((c) => c.join(' + ')).join('\n');
+  form.elements.restricted.value = reg().restricted.join('\n');
+  form.elements.banned.value = reg().banned.join('\n');
   $('reg-dialog').showModal();
 }
 
 function saveRegulations(e) {
   e.preventDefault();
-  const fmt = deckFormat();
   const form = $('reg-form');
   const lines = (name) => [...new Set(form.elements[name].value.split(/\r?\n/).map((s) => s.replace(/^[《\s]+|[》\s]+$/g, '')).filter(Boolean))];
-  state.regulations = {
-    ...state.regulations,
-    [fmt.id]: {
-      restricted: lines('restricted'),
-      banned: lines('banned'),
-      helper: lines('helper'),
-      combos: lines('combos').map((l) => l.split(/\s*[+＋]\s*/).map((s) => s.replace(/^《|》$/g, '').trim())).filter((c) => c.length === 2 && c[0] && c[1]),
-    },
-  };
+  state.regulation = { restricted: lines('restricted'), banned: lines('banned') };
   $('reg-dialog').close();
   update();
 }
@@ -254,7 +196,7 @@ function runImport(e) {
       : 'カードの行が見つかりませんでした。';
     return;
   }
-  const deck = { id: nextDeckId(), name: $('import-name').value.trim() || `インポート${nextDeckId()}`, format: activeDeck().format, cards };
+  const deck = { id: nextDeckId(), name: $('import-name').value.trim() || `インポート${nextDeckId()}`, cards };
   state.decks.push(deck);
   switchDeck(deck.id);
   if (missing.length) $('import-status').textContent = `「${deck.name}」を追加しました。\n見つからなかったカード：${missing.join('、')}`;
@@ -262,7 +204,7 @@ function runImport(e) {
 }
 
 // ---------- 共有リンク ----------
-// デッキ名・フォーマット・カード名と枚数を URL の # 以降に詰める（サーバーには送られない）。
+// デッキ名・カード名と枚数を URL の # 以降に詰める（サーバーには送られない）。
 // 形式: #deck=<z|j><base64url>（z: deflate で圧縮した JSON、j: 圧縮なし）。
 // 以前の版のリンク（カードの情報ごと入っている）も、名前で読み込む
 
@@ -275,7 +217,7 @@ const fromBase64Url = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').rep
 const pipeBytes = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
 
 async function deckLink(deck) {
-  const data = { n: deck.name, f: deck.format, c: deckEntries(deck).map((e) => [e.qty, e.card.name]) };
+  const data = { n: deck.name, c: deckEntries(deck).map((e) => [e.qty, e.card.name]) };
   let bytes = new TextEncoder().encode(JSON.stringify(data));
   let tag = 'j';
   if (window.CompressionStream) {
@@ -339,20 +281,27 @@ async function openSharedDeck() {
   const name = String(data.n ?? '共有デッキ').slice(0, 60);
   const note = missing.length ? `\n（見つからないカード：${missing.join('、')}）` : '';
   if (!total || !confirm(`共有されたデッキ「${name}」（${total}枚）を追加しますか？${note}`)) return;
-  const deck = { id: nextDeckId(), name, format: DM.formatOf(data.f).id, cards };
+  const deck = { id: nextDeckId(), name, cards };
   state.decks.push(deck);
   switchDeck(deck.id);
 }
 
 // ---------- 描画 ----------
 
-const detailOf = (card) => ({ name: card.name, image: card.image, text: DM.detailText(card) });
+// カードの詳細（拡大表示）。「＋1枚」「−1枚」は閉じずに枚数を書き換える
+const detailText = (card) => `【デッキに ${activeDeck().cards[card.id] ?? 0} / ${maxCopies(card)} 枚】\n${DM.detailText(card)}`;
+function openDetail(card) {
+  const refresh = () => updateCardDetailText(detailText(card));
+  showCardDetail({ name: card.name, image: card.image, text: detailText(card) }, [
+    ['− 1枚', () => { removeCard(card); refresh(); }, { keep: true }],
+    ['＋ 1枚', () => { addCard(card); refresh(); }, { keep: true, primary: true }],
+  ]);
+}
 
 function matchesFilter(card) {
   const q = $('query').value.trim();
   if (q && ![card.name, card.race, card.text, card.type].some((s) => String(s ?? '').includes(q))) return false;
   if (filterCivs.size && !card.civs.some((c) => filterCivs.has(c))) return false;
-  if ($('format-only').checked && !usableIn(card)) return false;
   return true;
 }
 
@@ -379,21 +328,21 @@ function renderResults() {
   box.replaceChildren(...list.slice(0, shownLimit).map((card) => {
     const qty = activeDeck().cards[card.id] ?? 0;
     const el = document.createElement('div');
-    el.className = 'result' + (qty >= maxCopies(card) ? ' maxed' : '') + (inEra(card) ? '' : ' out-of-era');
+    el.className = 'result' + (qty >= maxCopies(card) ? ' maxed' : '') + (maxCopies(card) === 0 ? ' out-of-era' : '');
     el.tabIndex = 0;
     el.append(DM.cardFace(card, { lazy: true }));
     if (qty) el.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: qty }));
-    el.addEventListener('click', () => addCard(card));
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCard(card); });
+    // クリック（スマホはタップ）で詳細。右クリックで1枚減らす
+    el.addEventListener('click', () => {
+      $('hover-preview').hidden = true;
+      openDetail(card);
+    });
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') openDetail(card); });
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (!phone()) removeCard(card);
     });
     hoverPreview(el, card);
-    onLongPress(el, () => showCardDetail(detailOf(card), [
-      ['1枚追加', () => addCard(card)],
-      ['1枚減らす', () => removeCard(card)],
-    ]));
     return el;
   }));
 }
@@ -423,9 +372,6 @@ function placePreview(e) {
 function renderDeckList() {
   $('deck-select').replaceChildren(...state.decks.map((d) => new Option(`${d.name}（${deckTotal(d)}枚）`, d.id)));
   $('deck-select').value = activeDeck().id;
-  const fmt = deckFormat();
-  $('format').value = fmt.id;
-  $('reg-open').hidden = !fmt.era;
 }
 
 function renderDeck() {
@@ -436,13 +382,12 @@ function renderDeck() {
   renderCivCount();
   renderStats();
   renderCurve();
-  renderBadge();
 
   const deck = $('deck');
   const entries = deckEntries().sort((a, b) => byCostName(a.card, b.card));
   $('deck-sort').value = activeDeck().sort ?? 'type';
   if (!entries.length) {
-    deck.innerHTML = '<p class="empty">カードをクリックして追加（右クリックで1枚減らす）</p>';
+    deck.innerHTML = '<p class="empty">カードをクリックすると詳細が開き、「＋ 1枚」で追加できます</p>';
     return;
   }
   deck.replaceChildren(...deckGroups(entries, activeDeck().sort).flatMap(([label, list]) => {
@@ -504,10 +449,11 @@ function renderRow({ card, qty }) {
   }));
   row.querySelector('.minus').addEventListener('click', () => removeCard(card));
   row.querySelector('.plus').addEventListener('click', () => addCard(card));
-  onLongPress(row.querySelector('.name'), () => showCardDetail(detailOf(card), [
-    ['1枚追加', () => addCard(card)],
-    ['1枚減らす', () => removeCard(card)],
-  ]));
+  // カード名のクリックで詳細
+  row.querySelector('.name').addEventListener('click', () => {
+    $('hover-preview').hidden = true;
+    openDetail(card);
+  });
   hoverPreview(row, card);
   return row;
 }
@@ -556,12 +502,6 @@ function renderCivFilter() {
 // ---------- 初期化 ----------
 
 function init() {
-  $('format').replaceChildren(...DM.FORMATS.map((f) => new Option(f.name, f.id)));
-  $('format').addEventListener('change', (e) => {
-    activeDeck().format = e.target.value;
-    update();
-  });
-  $('format-only').addEventListener('change', refilter);
   // 並び順はデッキごとに保存する
   $('deck-sort').addEventListener('change', (e) => {
     activeDeck().sort = e.target.value;
@@ -573,8 +513,7 @@ function init() {
   $('reg-cancel').addEventListener('click', () => $('reg-dialog').close());
   $('reg-reset').addEventListener('click', () => {
     if (!confirm('この殿堂を既定の一覧に戻しますか？')) return;
-    const { [deckFormat().id]: _, ...rest } = state.regulations ?? {};
-    state.regulations = rest;
+    delete state.regulation;
     $('reg-dialog').close();
     update();
   });

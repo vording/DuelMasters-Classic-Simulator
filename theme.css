@@ -293,19 +293,10 @@ html.phone .row .name { -webkit-touch-callout: none; -webkit-user-select: none; 
 .card-detail-actions:empty { display: none; }
 .card-detail-actions button { min-width: 110px; min-height: 40px; font-size: 15px; }
 
-/* ロゴ（文字）。スマホは小さくして「System」を省く */
-.logo { display: flex; align-items: baseline; }
-.logo-text {
-  font: 900 20px "Meiryo", "Hiragino Sans", sans-serif;
-  letter-spacing: .04em;
-  color: #fff;
-  background: linear-gradient(180deg, #ffe58a, #f0a020 55%, #c0501a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(1px 1px 0 #000);
-}
-html.phone .logo-text { font-size: 17px; }
+/* ロゴ（img/logo.png）。スマホは小さくして「CLASSIC SYSTEM」を省く */
+.logo { display: flex; align-items: center; }
+.logo-img { display: block; height: 40px; width: auto; }
+html.phone .logo-img { height: 34px; }
 
 /* ---------- 文明の色・カードの絵（cards.js の cardFace） ---------- */
 :root {

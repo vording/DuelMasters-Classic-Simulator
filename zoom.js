@@ -65,18 +65,25 @@
     dialog.querySelector('.card-detail-name').textContent = card.name;
     // タイプ・効果テキスト・P/T（あれば）
     dialog.querySelector('.card-detail-text').textContent = card.text ?? '';
-    dialog.querySelector('.card-detail-actions').replaceChildren(...actions.map(([label, fn]) => {
+    // actions: [[ボタン名, fn, { keep: true }なら閉じずに続ける, { primary }], ...]
+    dialog.querySelector('.card-detail-actions').replaceChildren(...actions.map(([label, fn, opts = {}]) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = label;
+      if (opts.primary) b.className = 'primary';
       b.addEventListener('click', () => {
-        dialog.close();
+        if (!opts.keep) dialog.close();
         fn();
       });
       return b;
     }));
     if (!dialog.open) dialog.showModal();
   }
+  // 開いている拡大表示の説明文だけを書き換える（枚数を足したときなど）
+  function updateCardDetailText(text) {
+    if (dialog?.open) dialog.querySelector('.card-detail-text').textContent = text;
+  }
+  window.updateCardDetailText = updateCardDetailText;
 
   window.onLongPress = onLongPress;
   window.showCardDetail = showCardDetail;

@@ -7,25 +7,25 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=5">
-  <link rel="stylesheet" href="style.css?v=7">
-  <link rel="stylesheet" href="skin.css?v=3">
+  <link rel="stylesheet" href="theme.css?v=6">
+  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="skin.css?v=15">
   <script src="device.js?v=1"></script>
-  <script src="zoom.js?v=1"></script>
+  <script src="zoom.js?v=2"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
   <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i></div>
   <div class="app">
     <header class="topbar">
-      <h1 class="logo"><span class="logo-text">デュエマ</span><small>CLASSIC SYSTEM</small></h1>
+      <h1 class="logo"><img class="logo-img" src="img/logo.png" alt="デュエル・マスターズ"><small>CLASSIC 基本編</small></h1>
       <nav class="nav">
         <span class="active"><b>DECK BUILD</b><small>デッキ作成</small></span>
         <a href="play.html"><b>BATTLE</b><small>一人回し・対戦</small></a>
       </nav>
       <span class="spacer"></span>
     </header>
-    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
 
     <!-- スマホ用：カード一覧とデッキの切り替え -->
     <nav class="phone-tabs">
@@ -39,13 +39,12 @@
         <div class="search-tools">
           <input id="query" type="search" placeholder="カード名・種族・テキストで絞り込み" autocomplete="off">
           <div class="civ-filter" id="civ-filter"></div>
-          <label class="toggle"><input type="checkbox" id="format-only"> デッキのフォーマットで使えるカードだけ</label>
         </div>
         <div class="results-wrap">
           <div id="results" class="results"></div>
           <button id="more" class="more" hidden>さらに表示</button>
         </div>
-        <p class="status search-hint">クリックで追加・右クリックで1枚減らす（スマホは長押しで拡大）</p>
+        <p class="status search-hint">クリック（スマホはタップ）で詳細を開いて追加・右クリックで1枚減らす</p>
       </section>
 
       <section class="panel deck-panel">
@@ -59,10 +58,9 @@
             <button id="deck-delete">削除</button>
           </div>
           <div class="format-row">
-            <select id="format" aria-label="フォーマット"></select>
-            <button type="button" id="reg-open" title="制限・禁止・お助けカード・プレミアム殿堂コンビ">殿堂…</button>
+            <span class="format-name">クラシック基本編</span>
+            <button type="button" id="reg-open" title="殿堂（制限・禁止）">殿堂…</button>
           </div>
-          <button type="button" id="reg-badge" class="reg-badge" hidden></button>
           <div class="deck-actions io-actions">
             <button id="export" title="「4 カード名」の形式">テキストでコピー</button>
             <button id="import">インポート…</button>
@@ -101,16 +99,14 @@
   <!-- PC：カードにマウスを乗せたときの拡大 -->
   <div id="hover-preview" class="hover-preview" hidden></div>
 
-  <!-- クラシックの殿堂（制限・禁止・お助け・プレミアム殿堂コンビ） -->
+  <!-- クラシック基本編の殿堂（制限・禁止） -->
   <dialog id="reg-dialog" class="import-dialog reg-dialog">
-    <h2 class="panel-head"><b>REGULATION</b><small id="reg-title">殿堂</small></h2>
+    <h2 class="panel-head"><b>REGULATION</b><small>クラシック基本編の殿堂</small></h2>
     <form id="reg-form" class="dialog-body">
       <p class="status">クラシックの殿堂はコミュニティで決められ、ときどき改定されます。改定されたら、カード名を1行に1枚ずつ書き換えてください（カードの名前と同じに）。</p>
       <div class="reg-grid">
         <label class="field-col">制限（殿堂・1枚まで）<textarea name="restricted" rows="6" spellcheck="false"></textarea></label>
         <label class="field-col">禁止（プレミアム殿堂・0枚）<textarea name="banned" rows="6" spellcheck="false"></textarea></label>
-        <label class="field-col">お助けカード（この中から1種類を1枚だけ）<textarea name="helper" rows="6" spellcheck="false"></textarea></label>
-        <label class="field-col">プレミアム殿堂コンビ（1行に「A + B」。同時に入れられない）<textarea name="combos" rows="6" spellcheck="false"></textarea></label>
       </div>
       <div class="dialog-actions">
         <button type="button" id="reg-reset">既定に戻す</button>
@@ -148,9 +144,9 @@
   </dialog>
 
   <script src="sound.js?v=3"></script>
-  <script src="settings.js?v=2"></script>
-  <script src="classic-cards.js?v=2"></script>
-  <script src="cards.js?v=7"></script>
-  <script src="app.js?v=8"></script>
+  <script src="settings.js?v=3"></script>
+  <script src="classic-cards.js?v=3"></script>
+  <script src="cards.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

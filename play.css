@@ -380,7 +380,7 @@ body.online .hand { --card-w: clamp(62px, 9.5cqh, 92px); }
 }
 .opp-area.active-turn .opp-status { color: var(--ink); font-weight: bold; }
 .battlefield.opp { justify-content: flex-start; }
-.battlefield.opp .shield-row, .battlefield.opp .mana-row { border-top: none; border-bottom: 1px solid var(--felt-line); padding: 0 0 8px; }
+.battlefield.opp .shield-row, .battlefield.opp .mana-row { border-top: none; border-bottom: 1px solid var(--felt-line); padding: 10px 0 8px; }
 
 .player-block.opp { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; margin-bottom: 2px; border-bottom: 2px solid #000; box-shadow: 0 1px #5c5c5c; }
 .pile.static { cursor: default; }
@@ -534,4 +534,9 @@ html.phone .menu button, html.phone .menu button:hover:not(:disabled), html.phon
 html.phone .viewer-cards .card { --card-w: 80px; }
 
 /* スマホの対戦画面は上のバーが狭いので、画面の切り替えは下のバーの「デッキ」で行う */
-html.phone .topbar .nav { display: none; }
+/* スマホ：上部にデッキ作成・対戦の切り替えを出すので、元に戻す・リスタートはアイコンだけ */
+html.phone .topbar #undo, html.phone .topbar #restart { flex: none; width: 34px; height: 34px; padding: 0; font-size: 0; }
+html.phone .topbar #undo::before { margin: 0; }
+html.phone .topbar #restart::before { content: '↻'; font-size: 18px; line-height: 1; }
+html.phone .topbar .net-status:empty { display: none; }
+html.phone .app > .topbar { gap: 6px; }

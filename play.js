@@ -1,4 +1,4 @@
-// デュエマ System — 一人回し／ネット対戦（カードの効果は手で処理）
+// デュエマ System — 一人回し／ネット対戦（カードの効果は effects.js で自動処理。自動にない効果は手で処理）
 // 自分のゲーム状態はすべて `game` に持ち、変更は act() を通して行う（元に戻すのため）。
 // ネット対戦では、描画のたびに自分の公開情報（snapshot）を相手に送り、相手の公開情報を `opp` に受け取る。
 // 手札とシールドの中身・山札の順番は送らない。
@@ -40,7 +40,7 @@ const PHASE_HINTS = {
 const LOSE_TEXT = { deck: '山札がなくなりました', direct: 'ダイレクトアタックを受けました', concede: '投了しました' };
 const WIN_TEXT = { deck: '相手の山札がなくなりました', direct: 'ダイレクトアタックが決まりました', concede: '相手が投了しました' };
 
-const ZONES = { library: '山札', hand: '手札', battlefield: 'バトルゾーン', mana: 'マナゾーン', shields: 'シールド', graveyard: '墓地', under: '進化元' };
+const ZONES = { library: '山札', hand: '手札', battlefield: 'バトルゾーン', mana: 'マナゾーン', shields: 'シールド', graveyard: '墓地', under: '進化元', resolving: '処理中' };
 
 const $ = (id) => document.getElementById(id);
 
@@ -156,11 +156,32 @@ function cardFrom(card, iid) {
   };
 }
 
+// 効果で得ている能力（buff：このターンだけ、guard：次の自分のターンまでブロッカー）を足した能力。
+// 相手のカード（snapshot）はすでに足してある
+// 自分のバトルゾーンのクリーチャーなら、常在型能力（effects.js の staticMods）も足す
+const ownOnField = (c) => game?.cards?.[c.iid] === c && c.isCreature && game.zones.battlefield.includes(c.iid);
+
+function abOf(c) {
+  const ab = { ...c.ab };
+  const b = c.buff ?? {};
+  const s = ownOnField(c) ? staticMods(c) : null;
+  if (c.guard || s?.blocker) ab.blocker = true;
+  const pa = (b.pa || 0) + (s?.pa || 0);
+  if (pa) ab.powerAttacker = (ab.powerAttacker || 0) + pa;
+  const breaker = Math.max(b.breaker || 1, s?.breaker || 1);
+  if (breaker > 1) ab.breaker = Math.max(ab.breaker || 1, breaker);
+  if (b.unblockable || s?.unblockable) ab.unblockable = true;
+  if (b.attackUntapped) ab.attackUntapped = true;
+  if (b.freeAttack) Object.assign(ab, { cannotAttack: false, cannotAttackPlayer: false, speedAttacker: true });
+  return ab;
+}
+const powerOf = (c) => (Number(c.power) || 0) + (c.buff?.power || 0) + (ownOnField(c) ? staticMods(c).power : 0);
+
 // 攻撃するときのパワー（パワーアタッカーを足す）
-const attackPower = (c) => (Number(c.power) || 0) + (c.ab?.powerAttacker || 0);
+const attackPower = (c) => powerOf(c) + (abOf(c).powerAttacker || 0);
 
 // 召喚酔い：このターン（自分のターン数で数える）に出たクリーチャーは、スピードアタッカー・進化でなければ攻撃できない
-const isSick = (c) => !!c.isCreature && c.enteredTurn != null && c.enteredTurn >= game.turn && !c.ab?.speedAttacker && !c.ab?.evolution;
+const isSick = (c) => !!c.isCreature && c.enteredTurn != null && c.enteredTurn >= game.turn && !abOf(c).speedAttacker && !c.ab?.evolution;
 
 // 拡大表示用（文明・コスト・種類・テキスト・パワー）
 const detailOf = (c) => ({ name: c.name, image: c.image, text: DM.detailText(c) });
@@ -183,6 +204,7 @@ function showToast(text) {
 function moveSound(card, from, to) {
   if (to === 'mana') return Sound.manaName(card.civs);
   if (to === 'battlefield') return card.isCreature ? 'summon' : 'field';
+  if (to === 'resolving') return from === 'hand' ? 'spell' : null;
   if (to === 'graveyard') {
     if (from === 'battlefield') return 'destroy';
     if (from === 'hand' && card.isSpell) return 'spell';
@@ -215,7 +237,7 @@ function newGame(deck, onDraw, random = false) {
     nextIid: iid + 1,
     cards,
     // 山札は先頭が一番上。シールドは後ろから順にブレイクされる
-    zones: { library: shuffle(library), hand: [], battlefield: [], mana: [], shields: [], graveyard: [], under: [] },
+    zones: { library: shuffle(library), hand: [], battlefield: [], mana: [], shields: [], graveyard: [], under: [], resolving: [] },
     log: [],
     // 手札に加えたシールドのうち、S・トリガーを使うか決めていないもの
     triggers: [],
@@ -234,6 +256,7 @@ function newGame(deck, onDraw, random = false) {
   history = [];
   incomingAttack = null;
   shownResult = null;
+  fxQueue.length = 0;
   log(`「${deck.name}」で開始${game.orderFixed ? `（${random ? 'ランダムで' : ''}${game.onDraw ? '後攻' : '先攻'}）` : ''}`);
   // シールドを5枚置いてから、手札を5枚引く
   game.zones.shields = game.zones.library.splice(0, DM.SHIELDS);
@@ -256,6 +279,7 @@ function act(fn) {
     clearHistoryAfterAct = false;
   }
   render();
+  drainFx();
 }
 
 // 相手からのメッセージによる変更（元に戻す対象にしない）
@@ -264,9 +288,12 @@ function netUpdate(fn) {
   fn();
   history = [];
   render();
+  drainFx();
 }
 
 function undo() {
+  // 効果の処理中は戻さない（選んでいる途中の状態と食い違うため）
+  if (fxBusy()) return;
   const prev = history.pop();
   if (!prev) return;
   Sound.play('cancel');
@@ -287,14 +314,31 @@ const canPlay = () => !!game && game.turn > 0;
 
 // ---------- 基本操作（act の中で呼ぶ） ----------
 
-function moveCard(iid, to, { bottom = false, silent = false } = {}) {
+// destroy：破壊（バトル・効果で墓地へ）。セイバーで身代わりにできる
+function moveCard(iid, to, { bottom = false, silent = false, destroy = false } = {}) {
   const from = zoneOf(iid);
   if (!from) return;
   const card = game.cards[iid];
+  if (destroy && from === 'battlefield' && to === 'graveyard') {
+    const saver = fxSaver(card);
+    if (saver != null) {
+      log(`${game.cards[saver].name}がかわりに破壊された（${card.name}は残る）`);
+      return moveCard(saver, 'graveyard');
+    }
+  }
+  // 進化元は、一番上のカードが置かれるはずだった場所へ
+  const underTo = to;
+  // バトルゾーンから墓地へ置かれるとき、かわりに手札・マナ・シールドへ置くクリーチャー
+  const instead = from === 'battlefield' && to === 'graveyard' && (card.ab?.onDeath || fxDeathTo(card));
+  if (instead) to = instead;
   game.zones[from] = game.zones[from].filter((x) => x !== iid);
   const sound = moveSound(card, from, to);
   if (sound) Sound.play(sound);
-  if (to !== 'battlefield') card.attacking = false;
+  if (to !== 'battlefield') {
+    card.attacking = false;
+    delete card.buff;
+    delete card.guard;
+  }
   // マナゾーンへは多色カードはタップして置く。それ以外の場所ではアンタップに戻す
   card.tapped = to === 'mana' && card.civs.length > 1;
   if (to === 'battlefield' && from !== 'battlefield') card.enteredTurn = game.turn;
@@ -306,14 +350,16 @@ function moveCard(iid, to, { bottom = false, silent = false } = {}) {
   for (const u of under) {
     game.zones.under = game.zones.under.filter((x) => x !== u);
     game.cards[u].tapped = false;
-    if (to === 'library' && !bottom) game.zones.library.unshift(u);
-    else game.zones[to].push(u);
+    if (underTo === 'library' && !bottom) game.zones.library.unshift(u);
+    else game.zones[underTo].push(u);
   }
   if (!silent) {
     const where = to === 'library' ? `山札の一番${bottom ? '下' : '上'}` : ZONES[to];
     const shown = from === 'shields' || to === 'shields' ? 'シールドのカード' : card.name;
-    log(`${shown}：${ZONES[from]} → ${where}${under.length ? `（進化元${under.length}枚も）` : ''}`);
+    log(`${shown}：${ZONES[from]} → ${where}${instead ? '（墓地に置くかわりに）' : ''}${under.length ? `（進化元${under.length}枚も）` : ''}`);
   }
+  // 墓地に置かれたとき・ほかのクリーチャーが出た／墓地に置かれたときの効果は、この操作のあとで処理する（effects.js）
+  fxAfterMove(card, from, to);
 }
 
 // 山札が0枚になったら負け
@@ -340,6 +386,7 @@ function untapAll() {
   const all = [...game.zones.battlefield, ...game.zones.mana];
   if (all.some((iid) => game.cards[iid].tapped)) Sound.play('untap');
   for (const iid of all) game.cards[iid].tapped = false;
+  game.manaPool = [];
 }
 
 function clearAttackers() {
@@ -354,6 +401,7 @@ function startTurnOne() {
   log('ターン1開始');
   if (game.onDraw) drawCards(1);
   game.phase = 'charge';
+  skipEmptyCharge();
 }
 
 function beginTurn() {
@@ -363,7 +411,28 @@ function beginTurn() {
   log(`ターン${game.turn}開始`);
   clearAttackers();
   untapAll();
+  clearTurnFx(true);
   game.phase = 'start';
+}
+
+// 効果で得た「このターンだけ」の能力を消す（ターンの始まりには「次のターンまで」のブロッカーも）
+function clearTurnFx(guard = false) {
+  for (const c of Object.values(game.cards)) {
+    delete c.buff;
+    if (guard) delete c.guard;
+  }
+  game.turnFx = null;
+  // このターンにブレイクした相手のシールドの枚数（ビースト・チャージ）
+  game.brokeThisTurn = 0;
+}
+
+// 自分のターンの終わり：「ターンの終わりにアンタップする」クリーチャー
+function endOfTurnUntap() {
+  const mine = game.zones.battlefield.map((i) => game.cards[i]).filter((c) => c.isCreature);
+  const all = game.turnFx?.untapAtEnd || mine.some((c) => c.ab?.endUntap === 'all');
+  const list = mine.filter((c) => c.tapped && (all || c.ab?.endUntap === 'self'));
+  for (const c of list) c.tapped = false;
+  if (list.length) log(`ターンの終わりにアンタップ：${list.map((c) => c.name).join('、')}`);
 }
 
 function stepPhase() {
@@ -379,6 +448,7 @@ function startNextTurn() {
   beginTurn();
   stepPhase(); // ドロー
   stepPhase(); // マナチャージ
+  skipEmptyCharge();
 }
 
 // ---------- ターンの受け渡し（ネット対戦） ----------
@@ -409,6 +479,10 @@ function finishTurn() {
 function passTurn() {
   game.phase = 'end';
   clearAttackers();
+  endOfTurnUntap();
+  clearTurnFx();
+  // ファントム・ベール（このターンだけ、攻撃できるクリーチャーはすべて攻撃しなければならなかった）
+  game.forcedAttack = false;
   game.waiting = true;
   game.attack = null;
   Sound.play('endturn');
@@ -466,11 +540,14 @@ function forceMyTurn() {
 // ---------- マナ・召喚 ----------
 
 const untappedMana = () => game.zones.mana.map((i) => game.cards[i]).filter((c) => !c.tapped);
+// 自分でタップして選んだマナ（まだ支払いに使っていないもの）。手札の払えないカードを暗くするのに使う
+const manaPool = () => (game.manaPool ?? []).filter((i) => zoneOf(i) === 'mana' && game.cards[i].tapped).map((i) => game.cards[i]);
 
 // 支払うマナを選ぶ：カードの文明をそれぞれ1枚以上含めて、コストの枚数だけ。払えなければ null
-function payCost(card) {
-  const pool = untappedMana();
-  const cost = Number(card.cost) || 0;
+// pool：使えるマナ（ふだんはアンタップのマナ、選んだマナで払うときはそのマナ）
+function payCost(card, pool = untappedMana()) {
+  // コストを増やす・減らすクリーチャーの分を足す（effects.js）
+  const cost = costOf(card);
   if (pool.length < cost) return null;
   const chosen = [];
   // 必要な文明ごとに、その文明を持つマナを1枚（単色を優先して、多色を残す）
@@ -488,35 +565,52 @@ function payCost(card) {
 
 // 払えないときは確認して、支払わずに出す（コストを減らす効果などのため）
 function confirmPay(card) {
+  // 自分でタップして選んだマナがあれば、そこから払う（払えなければ、ふだんどおりアンタップのマナから）
+  const fromPool = manaPool().length ? payCost(card, manaPool()) : null;
+  if (fromPool) return { pay: fromPool };
   const pay = payCost(card);
   if (pay) return { pay };
-  const ok = confirm(`マナが足りません（コスト${card.cost}・${DM.civText(card.civs)}、使えるマナ${untappedMana().length}）。支払わずに出しますか？`);
+  const ok = confirm(`マナが足りません（コスト${costOf(card)}・${DM.civText(card.civs)}、使えるマナ${untappedMana().length}）。支払わずに出しますか？`);
   return ok ? { pay: [] } : null;
 }
 
+// 支払ったマナをタップし、選んだマナから外す
 function tapMana(pay) {
   for (const m of pay) m.tapped = true;
   if (pay.length) Sound.play('tap');
+  game.manaPool = (game.manaPool ?? []).filter((i) => !pay.some((m) => m.iid === i));
 }
 
 // 手札から召喚する・唱える（ダブルクリック）
 function playFromHand(iid) {
   if (!canPlay()) return;
   const c = game.cards[iid];
+  if (spellLocked(c)) return showToast('聖霊王アルカディアスがいるので、光以外の呪文は唱えられません');
   if (c.ab.evolution && c.isCreature) return chooseEvolutionBase(iid);
   const paid = confirmPay(c);
   if (!paid) return;
   act(() => {
+    // マナチャージ・ステップで召喚・呪文を使ったら、チャージせずにメインへ進んだことにする
+    if (game.phase === 'charge') game.phase = 'main';
     tapMana(paid.pay);
     const mana = paid.pay.length ? `（マナ${paid.pay.length}）` : '';
     if (c.isSpell) {
-      moveCard(iid, 'graveyard', { silent: true });
-      log(`${c.name}を唱えた${mana}（効果は手で処理）`);
+      // 呪文は効果を処理し終えるまでバトルゾーンの上に置いておく（自動で処理できなければ「処理完了」で墓地へ）
+      moveCard(iid, 'resolving', { silent: true });
+      log(`${c.name}を唱えた${mana}`);
     } else {
       moveCard(iid, 'battlefield', { silent: true });
       log(`${c.name}を${c.isCreature ? '召喚' : 'バトルゾーンに出した'}${mana}`);
     }
   });
+  playedFx(iid);
+}
+
+// 唱えた呪文・出したクリーチャーの効果（effects.js）
+function playedFx(iid) {
+  const c = game.cards[iid];
+  if (c.isSpell) return castFx(iid);
+  return runFx(iid, 'summon');
 }
 
 // 進化：バトルゾーンの自分のクリーチャーを選んで、その上に重ねる
@@ -532,6 +626,7 @@ function evolve(iid, baseIid) {
   const paid = confirmPay(c);
   if (!paid) return;
   act(() => {
+    if (game.phase === 'charge') game.phase = 'main';
     tapMana(paid.pay);
     game.zones.hand = game.zones.hand.filter((x) => x !== iid);
     // 進化元のいた場所に置く
@@ -545,7 +640,9 @@ function evolve(iid, baseIid) {
     c.enteredTurn = game.turn;
     Sound.play('evolve');
     log(`${c.name}を${base.name}の上に進化${paid.pay.length ? `（マナ${paid.pay.length}）` : ''}`);
+    fxAfterMove(c, 'hand', 'battlefield');
   });
+  runFx(iid, 'summon');
 }
 
 // マナチャージ（1ターンに1枚まで。超える場合は確認）
@@ -578,8 +675,10 @@ function breakShield(iid) {
   if (zoneOf(iid) !== 'shields') return;
   const c = game.cards[iid];
   moveCard(iid, 'hand', { silent: true });
-  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? '（S・トリガー）' : ''}`);
-  if (c.ab.sTrigger) game.triggers.push(iid);
+  // フ・レイル・ギガボルバがいると、その文明の S・トリガーは使えない
+  const blocked = c.ab.sTrigger && triggerBlocked(c);
+  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? (blocked ? '（S・トリガーは使えない）' : '（S・トリガー）') : ''}`);
+  if (c.ab.sTrigger && !blocked) game.triggers.push(iid);
 }
 
 function breakShields(n) {
@@ -587,20 +686,26 @@ function breakShields(n) {
   for (let k = 0; k < n && game.zones.shields.length; k++) breakShield(game.zones.shields.at(-1));
 }
 
-function useTrigger(iid) {
+async function useTrigger(iid) {
+  if (zoneOf(iid) !== 'hand') return;
+  if (spellLocked(game.cards[iid])) return showToast('聖霊王アルカディアスがいるので、光以外の呪文は唱えられません（「使わない」を選んでください）');
   act(() => {
     game.triggers = game.triggers.filter((x) => x !== iid);
+    // 攻撃した相手に「S・トリガーを使った」と知らせる（ポコルル）
+    game.triggerUsed = true;
     const c = game.cards[iid];
-    if (zoneOf(iid) !== 'hand') return;
     Sound.play('trigger');
     if (c.isSpell) {
-      moveCard(iid, 'graveyard', { silent: true });
-      log(`S・トリガーで${c.name}を唱えた（効果は手で処理）`);
+      moveCard(iid, 'resolving', { silent: true });
+      log(`S・トリガーで${c.name}を唱えた`);
     } else {
       moveCard(iid, 'battlefield', { silent: true });
       log(`S・トリガーで${c.name}を${c.isCreature ? '召喚' : '出した'}`);
     }
   });
+  // 効果を処理し終えてから、攻撃した相手に知らせる
+  await playedFx(iid);
+  finishTriggers();
 }
 
 function skipTrigger(iid) {
@@ -608,18 +713,63 @@ function skipTrigger(iid) {
     game.triggers = game.triggers.filter((x) => x !== iid);
     log(`${game.cards[iid].name}のS・トリガーを使わない`);
   });
+  finishTriggers();
+}
+
+// S・トリガーをすべて決め終えたら、攻撃した相手に知らせる（相手はそれまで次の攻撃やターン終了ができない）
+function finishTriggers() {
+  if (!game || pendingTriggers() || resolving().length || fxBusy() || !game.triggerFor) return;
+  const id = game.triggerFor;
+  const used = !!game.triggerUsed;
+  game.triggerFor = null;
+  game.triggerUsed = false;
+  saveGame();
+  if (!Net.connected()) return;
+  // 出したクリーチャーなどが先に相手へ届くよう、今の状態をすぐ送る
+  Net.send({ type: 'state', state: snapshot() });
+  Net.send({ type: 'triggersDone', id, used });
+}
+
+// まだ使うか決めていない S・トリガーの数（手札に残っているものだけ）
+const pendingTriggers = () => (game?.triggers ?? []).filter((iid) => zoneOf(iid) === 'hand').length;
+// 処理中の呪文
+const resolving = () => game?.zones.resolving ?? [];
+// 攻撃の結果待ち・S・トリガー・呪文や効果の処理中は、先に進めない
+const busy = () => !!game.attack || pendingTriggers() > 0 || resolving().length > 0 || fxBusy();
+
+// 呪文の効果を処理し終えた：墓地へ置く（S・トリガーで唱えた呪文なら、攻撃した相手に知らせる）
+function finishSpell(iid) {
+  if (zoneOf(iid) !== 'resolving') return;
+  act(() => {
+    moveCard(iid, 'graveyard', { silent: true });
+    log(`${game.cards[iid].name}の処理が終わった`);
+  });
+  finishTriggers();
 }
 
 // ---------- 攻撃 ----------
 
 const oppBattlefield = () => opp?.state?.battlefield ?? [];
-const canAttackNow = (c) => myTurn() && ['main', 'attack'].includes(game.phase) && !game.attack
-  && c.isCreature && !c.tapped && !isSick(c) && !c.ab.cannotAttack && zoneOf(c.iid) === 'battlefield';
+// マナチャージ・ステップからでも攻撃できる（チャージせずに攻撃へ進む）
+const canAttackNow = (c) => myTurn() && ['charge', 'main', 'attack'].includes(game.phase) && !busy()
+  && c.isCreature && !c.tapped && !isSick(c) && !abOf(c).cannotAttack && zoneOf(c.iid) === 'battlefield' && !attackBlockedBy(c);
+
+// 条件つきの「攻撃できない」：相手にシールドがない（ヴァシュナ・ギガゾウル）・相手のクリーチャーのほうが多い（ブルレイザー）
+function attackBlockedBy(c) {
+  const oppShields = online() ? opp?.state?.shields ?? 0 : game.oppShields;
+  if (c.ab?.needOppShields && !oppShields) return '相手にシールドがない';
+  if (c.ab?.outnumbered && online() && oppBattlefield().filter((o) => o.isCreature).length > game.zones.battlefield.filter((i) => game.cards[i].isCreature).length) return '相手のクリーチャーのほうが多い';
+  return null;
+}
+
+// 攻撃しなければならないのに、まだ攻撃していないクリーチャー（毎ターン攻撃する・ファントム・ベール）
+const mustAttackers = () => game.zones.battlefield.map((i) => game.cards[i])
+  .filter((c) => (c.ab?.mustAttack || game.forcedAttack) && canAttackNow(c) && attackTargets(c).length);
 const canAnyAttack = () => game.zones.battlefield.some((i) => canAttackNow(game.cards[i]));
 
 function onBattlefieldClick(iid) {
   const c = game.cards[iid];
-  if (myTurn() && ['main', 'attack'].includes(game.phase) && c.isCreature && !c.tapped && isSick(c)) {
+  if (myTurn() && ['charge', 'main', 'attack'].includes(game.phase) && c.isCreature && !c.tapped && isSick(c)) {
     return showToast(`${c.name}はこのターンに出たので攻撃できません（召喚酔い）`);
   }
   if (canAttackNow(c)) return openAttackMenu(iid);
@@ -627,12 +777,19 @@ function onBattlefieldClick(iid) {
 }
 
 // 攻撃先：プレイヤー、または相手のタップしているクリーチャー
+// （「タップされていないクリーチャーを攻撃できる」能力・カオス・ストライクで選ばれたクリーチャーは、アンタップでも）
 function attackTargets(c) {
+  const ab = abOf(c);
   const items = [];
-  if (!c.ab.cannotAttackPlayer) items.push(['プレイヤーを攻撃', 'player']);
-  if (online()) {
+  if (!ab.cannotAttackPlayer) items.push(['プレイヤーを攻撃', 'player']);
+  if (online() && !ab.cannotAttackCreature && !c.buff?.freeAttack) {
     for (const o of oppBattlefield()) {
-      if (o.tapped && o.isCreature) items.push([`${o.name}（パワー${o.power ?? 0}）を攻撃`, o.iid]);
+      if (!o.isCreature) continue;
+      // 「闇のクリーチャーに攻撃されない」など
+      if (o.ab?.unattackableBy?.some((v) => c.civs.includes(v))) continue;
+      const untappedOk = ab.attackUntapped === true || (Array.isArray(ab.attackUntapped) && ab.attackUntapped.some((v) => o.civs?.includes(v)))
+        || game.turnFx?.attackable?.includes(o.iid);
+      if (o.tapped || untappedOk) items.push([`${o.name}（パワー${o.power ?? 0}${o.tapped ? '' : '・アンタップ'}）を攻撃`, o.iid]);
     }
   }
   return items;
@@ -651,7 +808,7 @@ function openAttackMenu(iid) {
   ], lastPointer.x, lastPointer.y, c);
 }
 
-function declareAttack(iid, target) {
+async function declareAttack(iid, target) {
   const c = game.cards[iid];
   if (!canAttackNow(c)) return;
   const id = Math.random().toString(36).slice(2);
@@ -667,6 +824,19 @@ function declareAttack(iid, target) {
     log(`${c.name}（パワー${attackPower(c)}）で${targetName}を攻撃`);
     game.attack = { id, attacker: iid, target };
   });
+  // 攻撃するときの効果（相手がブロックする前に処理する）
+  if (hasFx(c.name, 'attack')) {
+    await runFx(iid, 'attack');
+    if (game.attack?.id !== id) return;
+    // 効果で攻撃したクリーチャーがバトルゾーンを離れたら、攻撃は終わり
+    if (zoneOf(iid) !== 'battlefield') {
+      act(() => {
+        game.attack = null;
+        log(`${c.name}がバトルゾーンを離れたので、攻撃は終わり`);
+      });
+      return;
+    }
+  }
   if (online() && Net.connected()) {
     // 攻撃クリーチャーの状態が先に相手へ届くよう、今の状態をすぐ送る
     Net.send({ type: 'state', state: snapshot() });
@@ -694,38 +864,73 @@ function resolveAttack(blockerIid) {
   const a = game.attack;
   if (!a) return;
   const atk = game.cards[a.attacker];
+  const atkAb = abOf(atk);
   const defIid = blockerIid ?? (a.target !== 'player' ? a.target : null);
   const def = defIid != null ? oppBattlefield().find((o) => o.iid === defIid) : null;
   const msg = { type: 'combat', id: a.id, matchId: game.matchId, dead: [], breaks: 0, direct: false };
+  // 割るシールドを選ぶ間は、結果をまだ相手に送らない（選び終えたら sendBreak で送る）
+  let send = online();
+  let broke = 0;
   act(() => {
+    // 攻撃はここで終わり（ネット対戦でシールドをブレイクしたときだけ、相手の S・トリガーを待つため下で残す）
     game.attack = null;
     if (zoneOf(a.attacker) !== 'battlefield') return;
     atk.attacking = false;
     const atkP = attackPower(atk);
-    if (def) {
+    if (defIid != null && !def) {
+      // 攻撃先のクリーチャーが（効果などで）いなくなった
+      log(`${atk.name}の攻撃先がいなくなった`);
+    } else if (def) {
       // バトル：パワーの大きいほうが勝ち、同じなら両方破壊。スレイヤーは負けても相手を破壊する
+      // 「バトルに勝っても墓地に置かれる」クリーチャー・ブラック・スレイヤーでブロックしたクリーチャーは、勝っても破壊
+      // 「自然・光スレイヤー」はその文明の相手とのバトルだけ。「光クリーチャーとのバトルに負けても墓地に置かれない」も
+      const slays = (ab, foe) => !!ab?.slayer || !!ab?.slayerCivs?.some((v) => foe.civs?.includes(v));
+      const survives = (ab, foe) => !!ab?.survivesVs && !!foe.civs?.includes(ab.survivesVs);
       const defP = Number(def.power) || 0;
-      const atkDies = defP >= atkP || !!def.ab?.slayer;
-      const defDies = atkP >= defP || !!atk.ab.slayer;
+      const atkDies = (defP >= atkP || slays(def.ab, atk) || !!atk.ab.suicide) && !survives(atkAb, def);
+      const defDies = (atkP >= defP || slays(atkAb, def) || !!def.ab?.suicide || (blockerIid != null && !!game.turnFx?.blackSlayer)) && !survives(def.ab, atk);
       log(`バトル${blockerIid != null ? '（ブロック）' : ''}：${atk.name}（${atkP}）対 ${def.name}（${defP}）`);
       if (defDies) {
         msg.dead.push(def.iid);
         log(`${def.name}を破壊`);
         Sound.play('destroy');
       }
-      if (atkDies) moveCard(atk.iid, 'graveyard');
+      if (atkDies) moveCard(atk.iid, 'graveyard', { destroy: true });
+      // 神拳の超人：ブロックされたら、相手のシールドを1枚ブレイク
+      if (blockerIid != null && atk.ab.blockedBreak) {
+        const shields = online() ? opp?.state?.shields ?? 0 : game.oppShields;
+        if (shields) {
+          log(`${atk.name}がブロックされたので、シールドを1枚ブレイク`);
+          broke = 1;
+          if (online()) {
+            msg.breaks = 1;
+            if (Net.connected()) game.attack = { ...a, triggers: true };
+          } else game.oppShields--;
+        }
+      }
     } else if (online()) {
       const shields = opp?.state?.shields ?? 0;
       if (!shields) {
         msg.direct = true;
         log(`${atk.name}でダイレクトアタック！`);
       } else {
-        msg.breaks = Math.min(atk.ab.breaker, shields);
-        log(`${atk.name}がシールドを${msg.breaks}枚ブレイク`);
+        const n = Math.min(atkAb.breaker, shields);
+        if (n < shields && Net.connected()) {
+          // どのシールドを割るかは攻撃した側が選ぶ（相手のシールドをクリック）
+          game.attack = { ...a, pick: { n, picked: [] } };
+          send = false;
+          log(`${atk.name}がシールドを${n}枚ブレイク：割るシールドを選択中`);
+        } else {
+          msg.breaks = n;
+          broke = n;
+          log(`${atk.name}がシールドを${n}枚ブレイク`);
+          if (Net.connected()) game.attack = { ...a, triggers: true };
+        }
       }
     } else if (game.oppShields > 0) {
-      const n = Math.min(atk.ab.breaker, game.oppShields);
+      const n = Math.min(atkAb.breaker, game.oppShields);
       game.oppShields -= n;
+      broke = n;
       Sound.play('break');
       log(`シールドを${n}枚ブレイク（相手のシールド残り${game.oppShields}枚）`);
     } else {
@@ -733,17 +938,67 @@ function resolveAttack(blockerIid) {
       log(`${atk.name}でダイレクトアタック！（一人回し：とどめ）`);
       showToast('ダイレクトアタック！ とどめを刺しました');
     }
-    if (online()) clearHistoryAfterAct = true; // 相手に結果を送った後は元に戻せない
+    // 相手プレイヤーを攻撃したあと墓地に置かれるクリーチャー
+    if (!def && defIid == null && atk.ab.dieAfterPlayerAttack && zoneOf(atk.iid) === 'battlefield') moveCard(atk.iid, 'graveyard');
+    game.brokeThisTurn = (game.brokeThisTurn || 0) + broke;
+    if (send) clearHistoryAfterAct = true; // 相手に結果を送った後は元に戻せない
   });
-  if (online()) Net.send(msg);
+  if (send) Net.send(msg);
+  miracleDraw(broke);
+}
+
+// 割るシールドを選ぶ：相手のシールドを左から数えた番号。選び直しもできる
+function pickShield(index) {
+  const p = game.attack?.pick;
+  if (!p) return;
+  const picked = p.picked.includes(index) ? p.picked.filter((i) => i !== index) : [...p.picked, index];
+  game.attack = { ...game.attack, pick: { ...p, picked } };
+  Sound.play('button');
+  saveGame();
+  if (picked.length >= p.n) sendBreak();
+  else {
+    renderOpp();
+    renderBanner();
+  }
+}
+
+// おまかせ：右（新しく置かれたもの）から順に選ぶ
+function pickShieldsAuto() {
+  const p = game.attack?.pick;
+  if (!p) return;
+  const total = opp?.state?.shields ?? 0;
+  const picked = [...p.picked];
+  for (let i = total - 1; i >= 0 && picked.length < p.n; i--) if (!picked.includes(i)) picked.push(i);
+  game.attack = { ...game.attack, pick: { ...p, picked } };
+  sendBreak();
+}
+
+function sendBreak() {
+  const a = game.attack;
+  if (!a?.pick) return;
+  const { n, picked } = a.pick;
+  act(() => {
+    game.attack = { id: a.id, attacker: a.attacker, target: a.target, triggers: true };
+    log(`シールドを${n}枚ブレイク（左から${picked.map((i) => i + 1).sort((x, y) => x - y).join('・')}枚目）`);
+    game.brokeThisTurn = (game.brokeThisTurn || 0) + n;
+    clearHistoryAfterAct = true;
+  });
+  Net.send({ type: 'combat', id: a.id, matchId: game.matchId, dead: [], breaks: n, at: picked, direct: false });
+  miracleDraw(n);
 }
 
 // ---------- 攻撃を受ける側（ネット対戦） ----------
 
 // ブロックできるクリーチャー：アンタップのブロッカー（攻撃クリーチャーが「ブロックされない」なら無し）
+// 「パワー○○以下のクリーチャーにブロックされない」などの攻撃クリーチャーは、当てはまるブロッカーを除く
 function blockers(attacker) {
   if (attacker?.ab?.unblockable) return [];
-  return game.zones.battlefield.map((i) => game.cards[i]).filter((c) => c.isCreature && c.ab.blocker && !c.tapped);
+  const by = attacker?.ab?.unblockableBy;
+  const excluded = (c) => (!!by && ((by.maxPower != null && powerOf(c) <= by.maxPower)
+    || (by.minPower != null && powerOf(c) >= by.minPower) || (by.civ && c.civs.includes(by.civ))))
+    // 「火・自然ブロッカー」は、その文明の攻撃クリーチャーだけブロックできる
+    || (!!c.ab?.blockerCivs && !c.ab.blockerCivs.some((v) => attacker?.civs?.includes(v)));
+  return game.zones.battlefield.map((i) => game.cards[i]).filter((c) => c.isCreature && abOf(c).blocker && !c.tapped && !excluded(c));
 }
 
 function receiveAttack(msg) {
@@ -761,6 +1016,7 @@ function respondAttack(blockerIid) {
     act(() => {
       const b = game.cards[blockerIid];
       b.tapped = true;
+      game.lastBlocker = blockerIid;
       Sound.play('block');
       log(`${b.name}でブロック`);
     });
@@ -777,14 +1033,56 @@ function receiveCombat(msg) {
   incomingAttack = null;
   netUpdate(() => {
     for (const iid of msg.dead ?? []) {
-      if (zoneOf(iid) === 'battlefield') moveCard(iid, 'graveyard');
+      if (zoneOf(iid) === 'battlefield') moveCard(iid, 'graveyard', { destroy: true });
     }
-    if (msg.breaks) breakShields(msg.breaks);
+    // 「ブロックしたとき、バトルのあとでアンタップする」ブロッカー
+    const b = game.cards[game.lastBlocker];
+    if (b && zoneOf(b.iid) === 'battlefield' && b.ab?.untapAfterBlock && b.tapped) {
+      b.tapped = false;
+      log(`${b.name}をバトルのあとでアンタップ`);
+    }
+    game.lastBlocker = null;
+    if (msg.breaks) {
+      // 相手が選んだシールド（左から数えた番号）を割る。番号がなければ右から
+      const chosen = (msg.at ?? []).map((i) => game.zones.shields[i]).filter((iid) => iid != null);
+      if (chosen.length) {
+        Sound.play('break');
+        for (const iid of chosen) breakShield(iid);
+        if (chosen.length < msg.breaks) breakShields(msg.breaks - chosen.length);
+      } else {
+        breakShields(msg.breaks);
+      }
+      game.triggerFor = msg.id;
+      game.triggerUsed = false;
+    }
     if (msg.direct) {
       log(`${oppName()}のダイレクトアタック`);
       lose('direct');
     }
   });
+  // S・トリガーがなければすぐに知らせる
+  if (msg.breaks) finishTriggers();
+}
+
+// 自分の攻撃でブレイクした相手が、S・トリガーを決め終えた
+function receiveTriggersDone(msg) {
+  if (game.attack?.id !== msg.id) return;
+  const atk = game.cards[game.attack.attacker];
+  netUpdate(() => {
+    game.attack = null;
+    log(`${oppName()}のS・トリガーの確認が終わりました${msg.used ? '（S・トリガーを使った）' : ''}`);
+  });
+  // ポコルル：相手が S・トリガーを使ったら、アンタップしてよい
+  if (msg.used && atk?.ab?.untapOnTrigger && atk.tapped && zoneOf(atk.iid) === 'battlefield') {
+    fxSerial(async () => {
+      if (await fxAsk(atk, `${oppName()}がS・トリガーを使いました。${atk.name}をアンタップしますか？`)) {
+        act(() => {
+          atk.tapped = false;
+          log(`${atk.name}をアンタップ`);
+        });
+      }
+    });
+  }
 }
 
 function toggleTap(iid) {
@@ -793,6 +1091,11 @@ function toggleTap(iid) {
     c.tapped = !c.tapped;
     Sound.play(c.tapped ? 'tap' : 'untap');
     log(`${c.name}を${c.tapped ? 'タップ' : 'アンタップ'}`);
+    // マナを自分でタップしたら「選んだマナ」に入れる（アンタップで外す）
+    if (zoneOf(iid) === 'mana') {
+      const pool = (game.manaPool ?? []).filter((i) => i !== iid);
+      game.manaPool = c.tapped ? [...pool, iid] : pool;
+    }
   });
 }
 
@@ -847,7 +1150,7 @@ function openPhaseMenu() {
 }
 
 function goToPhase(target) {
-  if (!myTurn() || game.attack) return;
+  if (!myTurn() || busy()) return;
   if (target === 'start') target = 'draw';
   // 対戦中は今より前のフェイズには進めない（ターンの終わりを越えると相手にターンが渡るため）
   const index = (id) => PHASES.findIndex(([p]) => p === id);
@@ -878,12 +1181,74 @@ function nextPhase() {
 }
 
 function endTurn() {
-  if (!myTurn() || game.attack) return;
+  if (!myTurn() || busy()) return;
+  stopAutoEnd();
+  const must = mustAttackers();
+  if (must.length) return showToast(`${must.map((c) => c.name).join('、')}は攻撃しなければなりません`);
+  // ビースト・チャージ：ターンが終わるとき、ブレイクしたシールドの数だけクリーチャーを山札から手札へ
+  const beast = game.turnFx?.beastCharge;
+  if (beast?.length) {
+    game.turnFx.beastCharge = [];
+    const n = game.brokeThisTurn || 0;
+    fxSerial(async () => {
+      for (const src of beast) {
+        if (n > 0 && game.cards[src]) await fxApi(src).search({ f: { creature: true }, n, may: true });
+        else act(() => log('ビースト・チャージ：このターンにブレイクしたシールドがない'));
+      }
+    }).then(endTurn);
+    return;
+  }
   act(() => {
     game.phase = 'end';
     clearAttackers();
     finishTurn();
   });
+}
+
+// ---------- 自動でターン終了 ----------
+// 攻撃し終えて、攻撃できるクリーチャーがいなくなったら、3秒数えてからターンを終了する（設定で切れる・取り消せる）
+
+const AUTO_END_SECONDS = 3;
+let autoEnd = null; // { left: 残り秒, timer }
+let autoEndSkip = null; // 取り消したターン（そのターンはもう数えない）
+const autoEndOn = () => { try { return localStorage.getItem('dm-deckmaker-autoend') !== 'off'; } catch { return true; } };
+const autoEndReady = () => autoEndOn() && myTurn() && game.phase === 'attack' && !busy() && !canAnyAttack()
+  && !game.result && autoEndSkip !== game.turn;
+
+function stopAutoEnd() {
+  if (!autoEnd) return;
+  clearInterval(autoEnd.timer);
+  autoEnd = null;
+}
+
+// render のたびに呼ぶ：条件がそろったら数え始め、くずれたら止める
+function checkAutoEnd() {
+  if (!game) return;
+  if (autoEnd && !autoEndReady()) {
+    stopAutoEnd();
+    renderBanner();
+  } else if (!autoEnd && autoEndReady()) {
+    autoEnd = {
+      left: AUTO_END_SECONDS,
+      timer: setInterval(() => {
+        if (!autoEnd) return;
+        autoEnd.left--;
+        if (autoEnd.left > 0) return renderBanner();
+        stopAutoEnd();
+        if (autoEndReady()) endTurn();
+        else renderBanner();
+      }, 1000),
+    };
+    renderBanner();
+  }
+}
+
+// マナチャージ・ステップ：チャージする手札がなければ、そのままメインへ
+function skipEmptyCharge() {
+  if (game.phase === 'charge' && !game.zones.hand.length) {
+    game.phase = 'main';
+    log('チャージする手札がないので、メイン・ステップへ');
+  }
 }
 
 // ---------- 描画 ----------
@@ -895,7 +1260,8 @@ function render() {
   $('turn-label').textContent = game.turn ? `ターン ${game.turn}` : '開始前';
   $('phase-hint').textContent = game.waiting ? '相手プレイヤーのターンです。' : PHASE_HINTS[game.phase] ?? '';
   const mana = game.zones.mana.length;
-  $('mana-count').textContent = started() ? `マナ ${untappedMana().length}/${mana}` : '';
+  const pooled = manaPool().length;
+  $('mana-count').textContent = started() ? `マナ ${untappedMana().length}/${mana}${pooled ? `（選択${pooled}）` : ''}` : '';
   $('mana-count').classList.toggle('over', myTurn() && game.charged > CHARGES_PER_TURN);
 
   $('phases').replaceChildren(...PHASES.map(([id, name]) => {
@@ -903,11 +1269,12 @@ function render() {
     b.textContent = name;
     b.dataset.phase = id;
     b.className = id === game.phase ? 'current' : '';
-    b.disabled = !myTurn() || !!game.attack;
+    b.disabled = !myTurn() || busy();
     b.addEventListener('click', () => goToPhase(id));
     return b;
   }));
-  const canAdvance = myTurn() && !game.attack;
+  // 攻撃の結果待ち・S・トリガーを決めている間は先に進めない
+  const canAdvance = myTurn() && !busy();
   for (const id of ['next-phase', 'end-turn']) $(id).disabled = !canAdvance;
   const stop = myTurn() ? nextStop() : null;
   $('next-phase').textContent = stop?.label ?? '次へ';
@@ -916,7 +1283,7 @@ function render() {
   $('phase-current').dataset.phase = game.phase;
   $('phase-current').disabled = !canAdvance;
   for (const id of ['draw', 'shuffle', 'look-top', 'search-library', 'add-shield', 'untap-all']) $(id).disabled = !canPlay();
-  $('undo').disabled = !history.length;
+  $('undo').disabled = !history.length || fxBusy();
 
   renderBanner();
   renderBattlefield();
@@ -932,12 +1299,25 @@ function render() {
   if (viewer) renderViewer();
   showResultIfNew();
   scheduleSync();
+  checkAutoEnd();
 }
 
 function renderBattlefield() {
   fillZone('bf-main', game.zones.battlefield, 'battlefield');
   fillZone('bf-shields', game.zones.shields, 'shields');
   fillZone('bf-mana', game.zones.mana, 'mana');
+  // 処理中の呪文：バトルゾーンの上に置き、「処理完了」で墓地へ
+  $('bf-resolving').hidden = !resolving().length;
+  $('bf-resolving').replaceChildren(...resolving().map((iid) => {
+    const item = document.createElement('div');
+    item.className = 'resolving-item';
+    const done = Object.assign(document.createElement('button'), { type: 'button', className: 'primary', textContent: '処理完了' });
+    done.title = '効果を処理し終えたら押す（呪文を墓地へ置く）';
+    done.hidden = fxBusy();
+    done.addEventListener('click', () => finishSpell(iid));
+    item.append(cardEl(iid, 'resolving'), done);
+    return item;
+  }));
 }
 
 // 自分のログ・相手のログ・チャットを時刻順にまとめて表示
@@ -999,13 +1379,20 @@ function renderBanner() {
     return b;
   };
   bar.hidden = false;
+  bar.classList.remove('trigger');
   const trigger = game.triggers?.find((iid) => zoneOf(iid) === 'hand');
   if (trigger != null) {
+    // S・トリガー：画面の中央にカードを大きく出して、使うか決めるまで止める
     const c = game.cards[trigger];
+    const rest = pendingTriggers() - 1;
+    bar.classList.add('trigger');
+    const choices = Object.assign(document.createElement('div'), { className: 'choices' });
+    choices.append(button('使う', () => useTrigger(trigger), true), button('使わない', () => skipTrigger(trigger)));
     bar.replaceChildren(
-      span(`S・トリガー：${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？`, 'banner-title'),
-      button('使う', () => useTrigger(trigger), true),
-      button('使わない', () => skipTrigger(trigger)),
+      span('SHIELD TRIGGER', 'trigger-title'),
+      DM.cardFace(c),
+      span(`${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？${rest ? `（ほかに${rest}枚）` : ''}`, 'banner-title'),
+      choices,
     );
     return;
   }
@@ -1018,6 +1405,41 @@ function renderBanner() {
       ...(a?.ab?.unblockable ? [span('（ブロックされない）')] : []),
       ...list.map((b) => button(`${b.name}（${b.power ?? 0}）でブロック`, () => respondAttack(b.iid))),
       button('ブロックしない', () => respondAttack(null), true),
+    );
+    return;
+  }
+  if (fxBusy()) {
+    bar.replaceChildren(span('カードの効果を処理しています'));
+    return;
+  }
+  if (resolving().length) {
+    const names = resolving().map((iid) => game.cards[iid].name).join('、');
+    bar.replaceChildren(
+      span(`呪文を処理中：${names}。効果を処理したら「処理完了」を押してください`),
+      button('処理完了', () => finishSpell(resolving()[0]), true),
+    );
+    return;
+  }
+  if (game.attack?.pick) {
+    const { n, picked } = game.attack.pick;
+    bar.replaceChildren(
+      span(`割るシールドを相手のシールドから${n}枚選んでください（あと${n - picked.length}枚）`, 'banner-title'),
+      button('おまかせ', pickShieldsAuto),
+    );
+    return;
+  }
+  if (autoEnd) {
+    bar.replaceChildren(
+      span(`攻撃できるクリーチャーがいないので、${autoEnd.left}秒後にターンを終了します`),
+      button('すぐ終了', () => { stopAutoEnd(); endTurn(); }, true),
+      button('取り消し', () => { stopAutoEnd(); autoEndSkip = game.turn; renderBanner(); }),
+    );
+    return;
+  }
+  if (game.attack?.triggers) {
+    bar.replaceChildren(
+      span('相手が S・トリガーを使うか決めています'),
+      button('待たずに進める', () => netUpdate(() => { game.attack = null; })),
     );
     return;
   }
@@ -1070,7 +1492,10 @@ function cardEl(iid, zone) {
   }
 
   fillCardFace(el, c);
-  if (zone === 'mana') el.classList.add('mana-card');
+  if (zone === 'mana') {
+    el.classList.add('mana-card');
+    if (c.tapped && (game.manaPool ?? []).includes(iid)) el.classList.add('pooled');
+  }
   if (zone === 'battlefield') {
     addBadges(el, c);
     if (myTurn() && isSick(c)) el.classList.add('sick');
@@ -1080,6 +1505,9 @@ function cardEl(iid, zone) {
   if (zone === 'hand' && !canPlay()) {
     el.addEventListener('click', () => { if (phone()) showCardDetail(detailOf(c)); });
   } else if (zone === 'hand') {
+    // マナを選んでいるときは、そのマナで払えるカードだけを明るく、ほかは暗くする
+    const pool = myTurn() ? manaPool() : [];
+    if (pool.length) el.classList.add(payCost(c, pool) ? 'payable' : 'unpayable');
     el.addEventListener('dblclick', () => playFromHand(iid));
     el.addEventListener('click', (e) => { if (phone()) openCardMenu(iid, e.clientX, e.clientY); });
   } else if (zone === 'battlefield') {
@@ -1101,19 +1529,25 @@ function cardEl(iid, zone) {
   return el;
 }
 
-// スマホ：長押ししてそのまま指を動かすと、カードを持ち上げて離した場所の領域（data-zone）へ移す。
-// 動かさずに離したら onHold（拡大表示・メニュー）。長押しする前に指を動かしたら、ふつうのスクロール
+// スマホ：カードに触れて指を動かすと、すぐにカードを持ち上げて、離した場所の領域（data-zone）へ移す（長押しはいらない）。
+// 手札は横にスクロールするので、横に動かしたらスクロール、縦に動かしたらドラッグ。
+// 動かさずに長押しして離したら onHold（拡大表示・メニュー）。ふつうのタップはクリックのまま
 function onHoldDrag(el, iid, onHold) {
   const HOLD_MS = 380;
+  const MOVE_PX = 8;
+  // ブラウザのスクロールより先にドラッグを始められるよう、touch-action を CSS で決める（data-drag）
+  el.dataset.drag = '1';
   let timer = null;
   let start = null;
   let held = false;
+  let mode = null; // null：まだ決めていない、'drag'：ドラッグ中、'scroll'：スクロールに任せる
   let ghost = null;
   let target = null;
   const reset = () => {
     clearTimeout(timer);
     timer = null;
     held = false;
+    mode = null;
     ghost?.remove();
     ghost = null;
     target?.classList.remove('drop-target');
@@ -1132,12 +1566,22 @@ function onHoldDrag(el, iid, onHold) {
   }, { passive: true });
   el.addEventListener('touchmove', (e) => {
     const t = e.touches[0];
-    if (timer) {
-      if (Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) reset();
-      return;
+    if (mode === 'scroll' || !start) return;
+    if (!mode) {
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      if (Math.hypot(dx, dy) < MOVE_PX) return;
+      clearTimeout(timer);
+      timer = null;
+      // 手札を横に動かしたらスクロール（長押しで持ち上げたあとは、どの向きでもドラッグ）
+      if (!held && el.closest('.hand') && Math.abs(dx) > Math.abs(dy)) {
+        mode = 'scroll';
+        return;
+      }
+      mode = 'drag';
+      el.classList.add('lifted');
     }
-    if (!held) return;
-    // 持ち上げている間は画面をスクロールさせない
+    // ドラッグ中は画面をスクロールさせない
     e.preventDefault();
     if (!ghost) {
       const r = el.getBoundingClientRect();
@@ -1157,11 +1601,12 @@ function onHoldDrag(el, iid, onHold) {
     }
   }, { passive: false });
   el.addEventListener('touchend', (e) => {
-    if (!held) return reset();
-    // 長押しのあとの click（タップの操作）は起こさない
+    const dragged = mode === 'drag' && !!ghost;
+    // ふつうのタップ・スクロールはそのまま（click が起きる）
+    if (!dragged && !(held && !mode)) return reset();
+    // ドラッグ・長押しのあとの click（タップの操作）は起こさない
     e.preventDefault();
-    const zone = ghost ? target?.dataset.zone : null;
-    const dragged = !!ghost;
+    const zone = dragged ? target?.dataset.zone : null;
     reset();
     if (!dragged) onHold();
     else if (zone) dropCard(iid, zone);
@@ -1175,12 +1620,25 @@ function fillCardFace(el, c) {
   el.append(DM.cardFace(c));
 }
 
+// 名前から収録カード（相手のカードの元のパワーを調べる）
+const printedByNameCache = {};
+const printedByName = (name) => (printedByNameCache[name] ??= Object.values(cardData).find((x) => x.name === name));
+
 // バトルゾーンのカードの印：攻撃中・進化元の枚数
 function addBadges(el, c) {
   const badge = (className, text) => el.append(Object.assign(document.createElement('span'), { className, textContent: text }));
   if (c.attacking) badge('atk', '攻撃');
   const under = Array.isArray(c.under) ? c.under.length : c.under || 0;
   if (under) badge('under', `進化元${under}`);
+  // 効果で得ている能力（相手のカードは snapshot の buffText）
+  const fx = c.buffText ?? (c.buff || c.guard ? buffBadge(c) : '');
+  if (fx) badge('fx-buff', fx);
+  // 効果・常在型能力でパワーが変わっていれば、今のパワー（相手のカードは snapshot の値）
+  if (c.isCreature) {
+    const base = (game.cards[c.iid] === c ? cardData[c.cid] : printedByName(c.name))?.power;
+    const now = game.cards[c.iid] === c ? powerOf(c) : Number(c.power);
+    if (base != null && now !== base) badge('fx-power', `${now}`);
+  }
 }
 
 function showPreview(c) {
@@ -1216,15 +1674,21 @@ function renderOpp() {
   const count = (z) => (Array.isArray(st[z]) ? st[z].length : st[z]);
   for (const z of ['library', 'hand', 'graveyard']) $(`opp-${z}-count`).textContent = st ? count(z) : '–';
   $('opp-main').replaceChildren(...(st?.battlefield ?? []).map(oppCardEl));
+  // 相手が処理中の呪文
+  $('opp-resolving').hidden = !st?.resolving?.length;
+  $('opp-resolving').replaceChildren(...(st?.resolving ?? []).map(oppCardEl));
   $('opp-mana').replaceChildren(...(st?.mana ?? []).map((c) => {
     const el = oppCardEl(c);
     el.classList.add('mana-card');
     return el;
   }));
-  $('opp-shields').replaceChildren(...Array.from({ length: st?.shields ?? 0 }, () => {
+  // 割るシールドを選んでいる間は、相手のシールドをクリックで選ぶ
+  const pick = game?.attack?.pick;
+  $('opp-shields').replaceChildren(...Array.from({ length: st?.shields ?? 0 }, (_, i) => {
     const el = document.createElement('div');
-    el.className = 'card shield';
+    el.className = 'card shield' + (pick ? ' pickable' : '') + (pick?.picked.includes(i) ? ' picked' : '');
     el.append(Object.assign(document.createElement('div'), { className: 'dm-back' }));
+    if (pick) el.addEventListener('click', () => pickShield(i));
     return el;
   }));
   let label;
@@ -1239,16 +1703,20 @@ function renderOpp() {
   if (waitingGuest) $('room-code-big').textContent = Net.code;
 }
 
+// 相手に見せるカード（効果で得ている能力・パワーを足しておく）
+function pubCard(iid) {
+  const c = game.cards[iid];
+  return {
+    iid, name: c.name, image: c.image, civs: c.civs, cost: c.cost, power: c.isCreature ? powerOf(c) : c.power, type: c.type, race: c.race, text: c.text,
+    ab: abOf(c), isCreature: c.isCreature, isSpell: c.isSpell, tapped: !!c.tapped, attacking: !!c.attacking, under: c.under?.length || 0,
+    buffText: c.buff || c.guard ? buffBadge(c) : '',
+  };
+}
+
 // 自分の公開情報（手札・シールドの中身、山札の順番は含めない）
 function snapshot() {
   if (!game) return null;
-  const pub = (iid) => {
-    const c = game.cards[iid];
-    return {
-      iid, name: c.name, image: c.image, civs: c.civs, cost: c.cost, power: c.power, type: c.type, race: c.race, text: c.text,
-      ab: c.ab, isCreature: c.isCreature, isSpell: c.isSpell, tapped: !!c.tapped, attacking: !!c.attacking, under: c.under?.length || 0,
-    };
-  };
+  const pub = pubCard;
   return {
     deckName: game.deckName,
     turn: game.turn,
@@ -1260,6 +1728,7 @@ function snapshot() {
     battlefield: game.zones.battlefield.map(pub),
     mana: game.zones.mana.map(pub),
     graveyard: game.zones.graveyard.map(pub),
+    resolving: resolving().map(pub),
     log: game.log.slice(-150),
     result: game.result ?? null,
   };
@@ -1329,7 +1798,10 @@ function setupNet() {
     if (game) render(); else renderOpp();
   });
   Net.on('state', (msg) => {
+    const prev = opp?.state;
     opp = { ...opp, state: msg.state, connected: true };
+    // 相手のクリーチャーが出た・墓地に置かれた（ミスト・リエス・屑男）
+    fxOppDiff(prev, msg.state);
     if (game) {
       renderBattlefield();
       renderBanner();
@@ -1348,6 +1820,11 @@ function setupNet() {
     if (game) render();
   });
   Net.on('combat', (msg) => { if (game) receiveCombat(msg); });
+  Net.on('triggersDone', (msg) => { if (game) receiveTriggersDone(msg); });
+  // カードの効果（effects.js）
+  Net.on('fx', receiveFx);
+  Net.on('peek', receivePeek);
+  Net.on('peekReply', receivePeekReply);
   Net.on('chat', (msg) => {
     chat.push({ ts: Date.now(), who: 'opp', name: oppName(), text: String(msg.text).slice(0, 300) });
     saveJson(sessionStorage, CHAT_KEY, chat.slice(-200));
@@ -1739,6 +2216,8 @@ function init() {
   else if (netInfo?.role === 'guest') Net.join(netInfo.code);
 
   const requested = Number(new URLSearchParams(location.search).get('deck'));
+  // 以前の版で始めたゲームには、処理中の呪文を置く場所がない
+  if (game) game.zones.resolving ??= [];
   if (game && (!requested || requested === game.deckId)) render();
   else {
     game = null;

@@ -7,26 +7,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=5">
-  <link rel="stylesheet" href="play.css?v=4">
-  <link rel="stylesheet" href="skin.css?v=3">
+  <link rel="stylesheet" href="theme.css?v=6">
+  <link rel="stylesheet" href="play.css?v=8">
+  <link rel="stylesheet" href="skin.css?v=15">
   <script src="device.js?v=1"></script>
   <script src="felt.js?v=2"></script>
-  <script src="zoom.js?v=1"></script>
+  <script src="zoom.js?v=2"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
   <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i></div>
   <div class="app">
     <header class="topbar">
-      <h1 class="logo"><span class="logo-text">デュエマ</span><small>CLASSIC SYSTEM</small></h1>
+      <h1 class="logo"><img class="logo-img" src="img/logo.png" alt="デュエル・マスターズ"><small>CLASSIC 基本編</small></h1>
+      <nav class="nav">
+        <a href="index.html"><b>DECK BUILD</b><small>デッキ作成</small></a>
+        <span class="active"><b>BATTLE</b><small>一人回し・対戦</small></span>
+      </nav>
       <span class="game-title"><span id="deck-name"></span></span>
       <span id="net-status" class="net-status"></span>
       <span class="spacer"></span>
-      <button id="undo" title="Ctrl+Z">元に戻す</button>
-      <button id="restart">リスタート</button>
+      <button id="undo" title="元に戻す（Ctrl+Z）" aria-label="元に戻す">元に戻す</button>
+      <button id="restart" title="リスタート" aria-label="リスタート">リスタート</button>
     </header>
-    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 / 05 / 08 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
 
     <main class="table">
       <!-- 左：カード・状況・フェイズ -->
@@ -106,9 +110,12 @@
             <div id="opp-mana" class="bf-row mana-row" data-label="MANA"></div>
             <div id="opp-shields" class="bf-row shield-row" data-label="SHIELD"></div>
             <div id="opp-main" class="bf-row" data-label="BATTLE ZONE"></div>
+            <div id="opp-resolving" class="bf-row resolving-row opp" data-label="RESOLVING" hidden></div>
           </div>
         </div>
         <div id="banner" class="banner" hidden></div>
+        <!-- 処理中の呪文（効果を処理し終えるまで戦場の中央に置く） -->
+        <div id="bf-resolving" class="resolving-row mine" data-label="RESOLVING" hidden></div>
         <!-- 自分：手前からマナ・シールド・バトルゾーン -->
         <div class="battlefield" data-zone="battlefield">
           <div id="bf-main" class="bf-row" data-label="BATTLE ZONE"></div>
@@ -222,10 +229,11 @@
 
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <script src="sound.js?v=3"></script>
-  <script src="settings.js?v=2"></script>
-  <script src="classic-cards.js?v=2"></script>
-  <script src="cards.js?v=7"></script>
+  <script src="settings.js?v=3"></script>
+  <script src="classic-cards.js?v=3"></script>
+  <script src="cards.js?v=11"></script>
   <script src="net.js?v=1"></script>
-  <script src="play.js?v=3"></script>
+  <script src="effects.js?v=3"></script>
+  <script src="play.js?v=10"></script>
 </body>
 </html>
