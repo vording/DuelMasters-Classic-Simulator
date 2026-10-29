@@ -7,13 +7,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=6">
+  <link rel="stylesheet" href="theme.css?v=7">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=16">
+  <link rel="stylesheet" href="skin.css?v=22">
   <script src="device.js?v=1"></script>
-  <script src="zoom.js?v=3"></script>
+  <script src="zoom.js?v=7"></script>
 </head>
 <body>
+  <!-- スタート画面（開いたとき最初に出す。真ん中の START でデッキ選択へ。app.js の showTitle / startFromTitle） -->
+  <div class="title-screen" id="title-screen" hidden>
+    <div class="title-rays" aria-hidden="true"></div>
+    <div class="title-grid" aria-hidden="true"></div>
+    <div class="title-cards" id="title-cards" aria-hidden="true"></div>
+    <div class="title-center">
+      <img class="title-logo" src="img/logo.png" alt="デュエル・マスターズ">
+      <div class="title-sub"><b>CLASSIC</b><span>基本編</span></div>
+      <button type="button" id="title-start" class="title-start"><b>START</b><small>スタート</small></button>
+      <p class="title-hint" aria-hidden="true">PRESS START</p>
+    </div>
+    <p class="title-foot">非公式のファンツールです</p>
+  </div>
+  <script>
+    // 一度スタートした（このタブで）・デッキを開くリンクで来たときは、スタート画面を出さない
+    try {
+      if (!location.hash && !sessionStorage.getItem('dm-deckmaker-title-seen')) document.getElementById('title-screen').hidden = false;
+    } catch {}
+  </script>
   <!-- 背景で動くオブジェクト（skin.css） -->
   <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i></div>
   <div class="app">
@@ -26,6 +45,16 @@
       <span class="spacer"></span>
     </header>
     <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+
+    <!-- デッキ選択（最初の画面）。デッキを開くと、下の編集画面になる（URL の #edit=デッキID） -->
+    <section class="deck-home" id="deck-home">
+      <h2 class="panel-head"><b>DECK SELECT</b><small>デッキ選択</small><span class="head-note" id="home-count"></span></h2>
+      <div class="home-actions">
+        <button type="button" id="home-new" class="primary">＋ 新しいデッキ</button>
+        <button type="button" id="home-import">インポート…</button>
+      </div>
+      <div id="home-decks" class="home-decks"></div>
+    </section>
 
     <!-- スマホ用：カード一覧とデッキの切り替え -->
     <nav class="phone-tabs">
@@ -44,12 +73,13 @@
           <div id="results" class="results"></div>
           <button id="more" class="more" hidden>さらに表示</button>
         </div>
-        <p class="status search-hint">クリック（スマホはタップ）で追加・右クリックで1枚減らす・長押しで詳細</p>
+        <p class="status search-hint">クリック（スマホはタップ）で追加・右クリックで1枚減らす・長押しで詳細。<span class="reg-mark restricted">殿堂</span>は1枚まで、<span class="reg-mark banned">禁止</span>は入れられない</p>
       </section>
 
       <section class="panel deck-panel">
         <h2 class="panel-head"><b>DECK</b><small>デッキ</small><span class="head-note"><span id="deck-count">0</span> / 40</span></h2>
         <div class="deck-top">
+          <button type="button" id="deck-back" class="back-btn">◀ デッキ選択に戻る</button>
           <select id="deck-select" aria-label="デッキを選択"></select>
           <div class="deck-actions">
             <button id="deck-new">新規</button>
@@ -140,10 +170,10 @@
     </form>
   </dialog>
 
-  <script src="sound.js?v=3"></script>
-  <script src="settings.js?v=3"></script>
+  <script src="sound.js?v=9"></script>
+  <script src="settings.js?v=5"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

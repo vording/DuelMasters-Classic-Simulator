@@ -37,8 +37,10 @@ function maxCopies(card) {
 function addCard(card) {
   const d = activeDeck();
   const qty = d.cards[card.id] ?? 0;
-  if (qty >= maxCopies(card)) return;
+  // これ以上入れられない（4枚・殿堂・禁止）
+  if (qty >= maxCopies(card)) return Sound.play('cancel');
   d.cards[card.id] = qty + 1;
+  Sound.play('card-add');
   update();
 }
 
@@ -46,6 +48,7 @@ function removeCard(card) {
   const d = activeDeck();
   if (!d.cards[card.id]) return;
   d.cards[card.id] -= 1;
+  Sound.play('card-remove');
   if (d.cards[card.id] <= 0) delete d.cards[card.id];
   update();
 }
@@ -54,19 +57,162 @@ function update() {
   save();
   renderDeck();
   renderResults();
+  if (view() === 'home') renderHome();
 }
 
+// 編集中のデッキを変える（編集画面なら URL の #edit= も合わせる）
 function switchDeck(id) {
   state.current = id;
+  if (view() === 'edit') history.replaceState(null, '', `#edit=${id}`);
   update();
 }
 
+// 新しいデッキを作って、編集画面で開く
 function createDeck() {
   const name = prompt('新しいデッキの名前', `デッキ${nextDeckId()}`);
   if (name === null) return;
   const deck = { id: nextDeckId(), name: name.trim() || `デッキ${nextDeckId()}`, cards: {} };
   state.decks.push(deck);
   switchDeck(deck.id);
+  openDeck(deck.id);
+}
+
+// ---------- 画面：デッキ選択（home）とデッキ編集（edit） ----------
+
+const view = () => document.body.dataset.view;
+
+// URL の #edit=デッキID なら編集画面、それ以外はデッキ選択
+function route() {
+  const m = location.hash.match(/^#edit=(\d+)$/);
+  const deck = m && state.decks.find((d) => d.id === Number(m[1]));
+  document.body.dataset.view = deck ? 'edit' : 'home';
+  if (deck && state.current !== deck.id) {
+    state.current = deck.id;
+    update();
+  }
+  if (!deck) renderHome();
+  // スタート画面の間は BGM を流さない（START を押したら流す）
+  if ($('title-screen').hidden) Bgm.play(deck ? 'edit' : 'select');
+  window.scrollTo(0, 0);
+}
+
+const openDeck = (id) => {
+  if (location.hash !== `#edit=${id}`) location.hash = `edit=${id}`;
+  else route();
+};
+const goHome = () => {
+  history.pushState(null, '', location.pathname + location.search);
+  changeView();
+};
+
+// ワイプで覆って画面を切り替える。覆っている間に重ねて呼ばれても1回だけ（覆い終わったときの URL で切り替える）
+let changing = null;
+function changeView() {
+  changing ??= Wipe.run(route).finally(() => { changing = null; });
+  return changing;
+}
+
+// デッキ選択：デッキごとのタイル（表紙＝一番コストの大きいクリーチャー、名前、枚数、文明）
+function renderHome() {
+  $('home-count').textContent = `${state.decks.length}個`;
+  $('home-decks').replaceChildren(...state.decks.map((d) => {
+    const total = deckTotal(d);
+    const cards = deckEntries(d).map((e) => e.card);
+    const cover = [...cards].sort((a, b) => DM.isCreatureType(b.type) - DM.isCreatureType(a.type) || b.cost - a.cost)[0];
+    const civs = DM.CIVS.filter((c) => cards.some((card) => card.civs.includes(c.name)));
+    const tile = document.createElement('div');
+    tile.className = 'deck-tile';
+    tile.tabIndex = 0;
+    tile.innerHTML = '<div class="tile-cover"></div><div class="tile-name"></div><div class="tile-meta"><span class="tile-count"></span><span class="civ-dots"></span></div><div class="tile-actions"><button type="button" class="tile-edit">編集</button><button type="button" class="tile-play primary">対戦 ▶</button></div>';
+    tile.querySelector('.tile-cover').append(cover ? DM.cardFace(cover, { lazy: true }) : Object.assign(document.createElement('span'), { className: 'tile-empty', textContent: 'カードなし' }));
+    tile.querySelector('.tile-name').textContent = d.name;
+    const count = tile.querySelector('.tile-count');
+    count.textContent = `${total} / ${DM.DECK_SIZE}`;
+    count.classList.toggle('ok', total === DM.DECK_SIZE);
+    tile.querySelector('.civ-dots').replaceChildren(...civs.map((c) => Object.assign(document.createElement('i'), { className: `civ-dot civ-${c.cls}`, title: c.name })));
+    tile.addEventListener('click', (e) => {
+      if (e.target.closest('.tile-play')) Bgm.leave(`play.html?deck=${d.id}`);
+      else openDeck(d.id);
+    });
+    tile.addEventListener('keydown', (e) => { if (e.key === 'Enter') openDeck(d.id); });
+    return tile;
+  }));
+}
+
+// ---------- スタート画面 ----------
+
+const TITLE_KEY = 'dm-deckmaker-title-seen';
+
+// 背景に流れるカード（画像のあるカードからランダムに）
+function showTitle() {
+  const screen = $('title-screen');
+  screen.classList.remove('launch');
+  screen.hidden = false;
+  const pool = allCards().filter((c) => c.image);
+  const cards = Array.from({ length: phone() ? 9 : 16 }, () => pool[Math.floor(Math.random() * pool.length)]);
+  $('title-cards').replaceChildren(...cards.map((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'title-card';
+    el.style.left = `${(i / cards.length) * 100 + Math.random() * 4 - 2}%`;
+    el.style.setProperty('--dur', `${14 + Math.random() * 10}s`);
+    el.style.setProperty('--delay', `${-Math.random() * 20}s`);
+    el.style.setProperty('--rot', `${Math.random() * 40 - 20}deg`);
+    el.style.setProperty('--scale', String(0.7 + Math.random() * 0.6));
+    // 画面の外から昇ってくるので、遅延読み込みにしない（しないと画像が出ないまま流れる）
+    el.append(DM.cardFace(card));
+    return el;
+  }));
+  $('title-start').focus({ preventScroll: true });
+}
+
+// START：ボタンがはじけて、光の輪と火花が広がり、ロゴが手前に飛んできて、ワイプでデッキ選択へ
+let starting = false;
+async function startFromTitle() {
+  if (starting) return;
+  starting = true;
+  const screen = $('title-screen');
+  try { sessionStorage.setItem(TITLE_KEY, '1'); } catch {}
+  Sound.play('evolve');
+  const center = screen.querySelector('.title-center');
+  // 光の輪（3つ）と火花（放射状に飛ぶ）
+  const burst = document.createElement('div');
+  burst.className = 'title-burst';
+  for (let k = 0; k < 3; k++) burst.append(Object.assign(document.createElement('i'), { className: `title-ring r${k}` }));
+  for (let k = 0; k < 28; k++) {
+    const spark = document.createElement('i');
+    spark.className = 'title-spark';
+    const angle = (k / 28) * Math.PI * 2 + Math.random() * 0.2;
+    const dist = 180 + Math.random() * 380;
+    spark.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    spark.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+    spark.style.setProperty('--delay', `${Math.random() * 0.12}s`);
+    burst.append(spark);
+  }
+  // START ボタンの真ん中から広げる
+  const btn = $('title-start');
+  burst.style.left = `${btn.offsetLeft + btn.offsetWidth / 2}px`;
+  burst.style.top = `${btn.offsetTop + btn.offsetHeight / 2}px`;
+  center.append(burst);
+  screen.classList.add('launch');
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+  await Wipe.cover();
+  screen.hidden = true;
+  screen.classList.remove('launch');
+  burst.remove();
+  route();
+  Wipe.reveal();
+  starting = false;
+}
+
+// 殿堂の印（一覧・デッキリスト）：制限＝「殿堂」、禁止＝「禁止」
+function regMark(card) {
+  const banned = reg().banned.includes(card.name);
+  if (!banned && !reg().restricted.includes(card.name)) return null;
+  return Object.assign(document.createElement('span'), {
+    className: `reg-mark ${banned ? 'banned' : 'restricted'}`,
+    textContent: banned ? '禁止' : '殿堂',
+    title: banned ? 'プレミアム殿堂（デッキに入れられない）' : '殿堂（デッキに1枚まで）',
+  });
 }
 
 function renameDeck() {
@@ -284,12 +430,15 @@ async function openSharedDeck() {
   const deck = { id: nextDeckId(), name, cards };
   state.decks.push(deck);
   switchDeck(deck.id);
+  openDeck(deck.id);
 }
 
 // ---------- 描画 ----------
 
 // カードの詳細（拡大表示）。「＋1枚」「−1枚」は閉じずに枚数を書き換える
 const detailText = (card) => `【デッキに ${activeDeck().cards[card.id] ?? 0} / ${maxCopies(card)} 枚】\n${DM.detailText(card)}`;
+// 長押しのあいだだけ出す詳細（離したら閉じる）
+const peekCard = (card) => ({ name: card.name, image: card.image, text: detailText(card) });
 function openDetail(card) {
   const refresh = () => updateCardDetailText(detailText(card));
   showCardDetail({ name: card.name, image: card.image, text: detailText(card) }, [
@@ -332,7 +481,9 @@ function renderResults() {
     el.tabIndex = 0;
     el.append(DM.cardFace(card, { lazy: true }));
     if (qty) el.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: qty }));
-    // クリック（スマホはタップ）で1枚追加、右クリックで1枚減らす、長押しで詳細
+    const mark = regMark(card);
+    if (mark) el.append(mark);
+    // クリック（スマホはタップ）で1枚追加、右クリックで1枚減らす、長押ししているあいだ詳細
     el.addEventListener('click', () => addCard(card));
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') addCard(card);
@@ -345,7 +496,7 @@ function renderResults() {
       e.preventDefault();
       if (!phone()) removeCard(card);
     });
-    onLongPress(el, () => openDetail(card), { mouse: true });
+    onPeek(el, () => peekCard(card));
     return el;
   }));
 }
@@ -423,6 +574,8 @@ function renderRow({ card, qty }) {
   row.querySelector('.qty').textContent = qty;
   row.querySelector('.cost').textContent = card.cost;
   row.querySelector('.name').textContent = card.name;
+  const mark = regMark(card);
+  if (mark) row.querySelector('.name').append(mark);
   row.querySelector('.civ-dots').replaceChildren(...card.civs.map((n) => {
     const dot = document.createElement('i');
     dot.className = `civ-dot civ-${DM.civOf(n)?.cls}`;
@@ -438,7 +591,7 @@ function renderRow({ card, qty }) {
     e.preventDefault();
     if (!phone()) removeCard(card);
   });
-  onLongPress(name, () => openDetail(card), { mouse: true });
+  onPeek(name, () => peekCard(card));
   return row;
 }
 
@@ -509,13 +662,13 @@ function init() {
   });
   renderCivFilter();
 
-  $('deck-select').addEventListener('change', (e) => switchDeck(Number(e.target.value)));
+  $('deck-select').addEventListener('change', (e) => openDeck(Number(e.target.value)));
   $('deck-new').addEventListener('click', createDeck);
   $('deck-rename').addEventListener('click', renameDeck);
   $('deck-copy').addEventListener('click', copyDeck);
   $('deck-delete').addEventListener('click', deleteDeck);
   $('deck-play').addEventListener('click', () => {
-    location.href = `play.html?deck=${activeDeck().id}`;
+    Bgm.leave(`play.html?deck=${activeDeck().id}`);
   });
   $('clear').addEventListener('click', () => {
     if (!deckTotal() || confirm('デッキを空にしますか？')) {
@@ -532,11 +685,30 @@ function init() {
   $('export-copy').addEventListener('click', copyFromDialog);
   $('export-share').addEventListener('click', () => navigator.share?.({ title: activeDeck().name, text: $('export-text').value }).catch(() => {}));
   $('export-close').addEventListener('click', () => $('export-dialog').close());
-  window.addEventListener('hashchange', openSharedDeck);
+  // デッキ選択・デッキ編集の切り替え（ブラウザの戻る・進むも）
+  $('deck-back').addEventListener('click', goHome);
+  $('home-new').addEventListener('click', createDeck);
+  $('home-import').addEventListener('click', openImport);
+  // 画面が変わるときは、ワイプで覆ってから切り替える
+  // （# を変えると popstate と hashchange の両方が起きるので、1回だけ）
+  window.addEventListener('hashchange', () => {
+    if (location.hash.startsWith('#deck=')) openSharedDeck();
+    else changeView();
+  });
+  window.addEventListener('popstate', () => {
+    if (!location.hash.startsWith('#deck=')) changeView();
+  });
+
+  // スタート画面：START（Enter・スペースでも）。上のロゴを押すとスタート画面に戻る
+  $('title-start').addEventListener('click', startFromTitle);
+  document.querySelector('.topbar .logo').addEventListener('click', () => Wipe.run(showTitle));
+  document.querySelector('.topbar .logo').style.cursor = 'pointer';
 
   save(); // 一人回し画面で読めるように、デッキを保存しておく
   renderDeck();
   renderResults();
+  if (!$('title-screen').hidden) showTitle();
+  route();
   openSharedDeck();
 }
 

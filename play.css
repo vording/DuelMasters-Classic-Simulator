@@ -1,6 +1,6 @@
 /* 一人回し画面（共通部分は theme.css） */
 :root {
-  --card-w: clamp(62px, 10cqh, 88px);
+  --card-w: clamp(76px, 13cqh, 124px);
 }
 
 body { user-select: none; }
@@ -218,13 +218,13 @@ body { user-select: none; }
 }
 .bf-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: calc(var(--card-w) * 1.395 + 4px); }
 /* シールドとマナは小さめのカードで、線で区切る */
-.shield-row, .mana-row { --row-w: calc(var(--card-w) * .72); gap: 5px; min-height: calc(var(--row-w) * 1.395 + 4px); border-top: 1px solid var(--felt-line); padding-top: 8px; }
+.shield-row, .mana-row { --row-w: calc(var(--card-w) * .8); gap: 5px; min-height: calc(var(--row-w) * 1.395 + 4px); border-top: 1px solid var(--felt-line); padding-top: 8px; }
 .shield-row .card, .mana-row .card { --w: var(--row-w); }
 
 .hand-area { background: #343434; border-top: 2px solid #000; }
 .zone-label { height: 25px; padding: 0 8px; font-size: 14px; font-weight: bold; line-height: 25px; background: #4a4a4a; border-bottom: 1px solid #000; box-shadow: inset 1px 1px #5e5e5e; }
 .hand { display: flex; gap: 6px; overflow-x: auto; min-height: calc(var(--card-w) * 1.395 * 1.1 + 10px); padding: 6px 10px 4px; }
-.hand { --card-w: clamp(70px, 12cqh, 100px); }
+.hand { --card-w: clamp(84px, 15cqh, 132px); }
 .hand .card:hover { transform: translateY(-4px); }
 
 .drop-target { outline: 2px dashed rgba(255, 255, 255, .7); outline-offset: -4px; }
@@ -349,7 +349,7 @@ body { user-select: none; }
 .menu-preview { width: min(40%, 160px); margin: 2px auto 8px; }
 
 @container (max-width: 860px) {
-  html:not(.phone) .table { grid-template-columns: 120px minmax(0, 1fr); --card-w: 70px; }
+  html:not(.phone) .table { grid-template-columns: 120px minmax(0, 1fr); --card-w: 86px; }
   html:not(.phone) .col-left, html:not(.phone) .col-right { grid-column: 1 / -1; }
   html:not(.phone) .col-left { order: 3; }
   html:not(.phone) .col-right { order: 4; }
@@ -365,8 +365,13 @@ body { user-select: none; }
 .net-status[data-state="error"] { text-decoration: underline; }
 
 /* 2人のときは戦場を上下に分けるので、カードを小さくする */
-body.online { --card-w: clamp(46px, 6.4cqh, 72px); }
-body.online .hand { --card-w: clamp(62px, 9.5cqh, 92px); }
+body.online { --card-w: clamp(52px, 8cqh, 92px); }
+/* 対戦は両方の盤面を出すので、シールド・マナの列は少し小さく */
+body.online .shield-row, body.online .mana-row { --row-w: calc(var(--card-w) * .72); }
+body.online .opp-area .shield-row, body.online .opp-area .mana-row { --row-w: calc(var(--card-w) * .6); }
+body.online .hand { --card-w: clamp(64px, 9.6cqh, 104px); }
+/* 相手の盤面は中身の高さだけ使い、残りを自分の盤面に回す */
+body.online .opp-area { flex: 0 0 auto; }
 
 .opp-area { flex: 1; display: flex; flex-direction: column; min-height: 0; border-bottom: 2px solid #000; box-shadow: 0 1px #5c5c5c; }
 .opp-status {
@@ -457,10 +462,10 @@ html.phone .net-status { flex: 1; min-width: 0; font-size: 12px; }
 html.phone .topbar .spacer { display: none; }
 html.phone .topbar button { flex: none; padding: 4px 8px; }
 
-html.phone .table { display: flex; flex-direction: column; gap: 4px; padding: 4px; max-width: none; --card-w: 54px; }
-html.phone body.online .table { --card-w: 40px; }
-html.phone .hand { --card-w: 64px; }
-html.phone body.online .hand { --card-w: 58px; }
+html.phone .table { display: flex; flex-direction: column; gap: 4px; padding: 4px; max-width: none; --card-w: 64px; }
+html.phone body.online .table { --card-w: 48px; }
+html.phone .hand { --card-w: 76px; }
+html.phone body.online .hand { --card-w: 68px; }
 
 /* シールド・山札：相手と自分を横1行ずつ */
 html.phone .col-player { order: 0; flex: none; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 4px 6px; overflow: visible; }

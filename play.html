@@ -7,12 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=6">
-  <link rel="stylesheet" href="play.css?v=8">
-  <link rel="stylesheet" href="skin.css?v=16">
+  <link rel="stylesheet" href="theme.css?v=7">
+  <link rel="stylesheet" href="play.css?v=14">
+  <link rel="stylesheet" href="skin.css?v=22">
   <script src="device.js?v=1"></script>
   <script src="felt.js?v=2"></script>
-  <script src="zoom.js?v=3"></script>
+  <script src="zoom.js?v=7"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
@@ -82,7 +82,7 @@
         <div class="player-name" id="my-player-name">あなた</div>
         <div class="shield-count" title="シールドの枚数"><span id="shield-count"></span></div>
         <div class="piles">
-          <div class="pile library" id="pile-library" data-zone="library" title="山札：クリックで1枚引く／右クリックでメニュー">
+          <div class="pile library" id="pile-library" data-zone="library" title="山札">
             <span class="pile-icon icon-library" aria-hidden="true"></span>
             <span class="pile-count" id="library-count"></span>
             <span class="pile-name">山札</span>
@@ -141,12 +141,6 @@
         <section class="panel">
           <h2 class="panel-head"><b>COMMAND</b><small>コマンド</small></h2>
           <div class="tools" id="tools">
-            <button id="draw">1枚引く（D）</button>
-            <button id="shuffle">シャッフル</button>
-            <button id="look-top">上から見る</button>
-            <button id="search-library">山札を探す</button>
-            <button id="add-shield">山札の上からシールドを追加</button>
-            <button id="untap-all">すべてアンタップ</button>
             <button id="concede">投了</button>
           </div>
         </section>
@@ -228,12 +222,12 @@
   <div id="menu" class="menu" hidden></div>
 
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-  <script src="sound.js?v=3"></script>
-  <script src="settings.js?v=3"></script>
+  <script src="sound.js?v=9"></script>
+  <script src="settings.js?v=5"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
   <script src="net.js?v=1"></script>
   <script src="effects.js?v=3"></script>
-  <script src="play.js?v=11"></script>
+  <script src="play.js?v=17"></script>
 </body>
 </html>

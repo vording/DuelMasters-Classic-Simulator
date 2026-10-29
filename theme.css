@@ -426,7 +426,6 @@ html.phone .settings-btn { width: 32px; min-height: 32px; padding: 0; }
 .settings .note { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .settings .status { margin: 6px 0 0; }
 .settings .status:empty { display: none; }
-.dice-btn { padding: 0 6px; font-size: 16px; line-height: 22px; }
 .settings-felt { gap: 10px; margin-top: 6px; }
 html .settings .felt-swatch, html .settings .felt-swatch:hover:not(:disabled), html .settings .felt-swatch:active:not(:disabled) { width: 32px; height: 32px; min-height: 0; }
 html.phone .settings .felt-swatch, html.phone .settings .felt-swatch:hover:not(:disabled), html.phone .settings .felt-swatch:active:not(:disabled) { width: 36px; height: 36px; }
