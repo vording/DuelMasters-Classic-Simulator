@@ -309,8 +309,17 @@ const zoneOf = (iid) => Object.keys(game.zones).find((z) => game.zones[z].includ
 const started = () => game && game.turn > 0;
 // 自分のターン中か（一人回しでは常に自分のターン）
 const myTurn = () => started() && !game.waiting;
-// 1ターン目が始まる前（相手の1ターン目を待つ後攻も含む）はカードを動かしたり引いたりできない
-const canPlay = () => !!game && game.turn > 0;
+// ネット対戦：自分の攻撃の結果（相手のブロック・S・トリガー）を待っている間は、ほかの操作をさせない
+// （攻撃するときの効果を処理している間は、効果の画面で操作する）
+const waitingOpp = () => !!game?.attack && online() && !fxBusy();
+// 1ターン目が始まる前（相手の1ターン目を待つ後攻も含む）・相手の対応を待っている間は、カードを動かしたり引いたりできない
+const canPlay = () => !!game && game.turn > 0 && !waitingOpp();
+// 操作できないときにお知らせを出す
+function blockedByWait() {
+  if (!waitingOpp()) return false;
+  showToast(game.attack.triggers ? '相手が S・トリガーを使うか決めています' : '相手の対応（ブロック）を待っています');
+  return true;
+}
 
 // ---------- 基本操作（act の中で呼ぶ） ----------
 
@@ -583,7 +592,7 @@ function tapMana(pay) {
 
 // 手札から召喚する・唱える（ダブルクリック）
 function playFromHand(iid) {
-  if (!canPlay()) return;
+  if (blockedByWait() || !canPlay()) return;
   const c = game.cards[iid];
   if (spellLocked(c)) return showToast('聖霊王アルカディアスがいるので、光以外の呪文は唱えられません');
   if (c.ab.evolution && c.isCreature) return chooseEvolutionBase(iid);
@@ -621,6 +630,7 @@ function chooseEvolutionBase(iid) {
 }
 
 function evolve(iid, baseIid) {
+  if (blockedByWait()) return;
   const c = game.cards[iid];
   const base = game.cards[baseIid];
   const paid = confirmPay(c);
@@ -647,7 +657,7 @@ function evolve(iid, baseIid) {
 
 // マナチャージ（1ターンに1枚まで。超える場合は確認）
 function chargeMana(iid) {
-  if (!canPlay()) return;
+  if (blockedByWait() || !canPlay()) return;
   const fromHand = zoneOf(iid) === 'hand';
   if (fromHand && myTurn() && game.charged >= CHARGES_PER_TURN
     && !confirm(`このターンはすでに${game.charged}枚マナチャージしています。それでもチャージしますか？`)) return;
@@ -663,7 +673,7 @@ function chargeMana(iid) {
 
 // 手からのマナはチャージとして数える
 function moveByUser(iid, to, opts) {
-  if (!canPlay()) return;
+  if (blockedByWait() || !canPlay()) return;
   if (to === 'mana' && zoneOf(iid) === 'hand') return chargeMana(iid);
   act(() => moveCard(iid, to, opts));
 }
@@ -1006,6 +1016,15 @@ function receiveAttack(msg) {
   incomingAttack = { id: msg.id, attacker: msg.attacker, target: msg.target };
   Sound.play('attacked');
   render();
+  // ブロックできるクリーチャーがいなければ、選ぶものがないので自動で「ブロックしない」
+  const a = oppBattlefield().find((o) => o.iid === msg.attacker);
+  if (!blockers(a).length) {
+    setTimeout(() => {
+      if (incomingAttack?.id !== msg.id) return;
+      act(() => log(`${a?.name ?? 'クリーチャー'}の攻撃：ブロックできるクリーチャーがいない`));
+      respondAttack(null);
+    }, 700);
+  }
 }
 
 function respondAttack(blockerIid) {
@@ -1086,6 +1105,7 @@ function receiveTriggersDone(msg) {
 }
 
 function toggleTap(iid) {
+  if (blockedByWait()) return;
   act(() => {
     const c = game.cards[iid];
     c.tapped = !c.tapped;
@@ -1436,18 +1456,19 @@ function renderBanner() {
     );
     return;
   }
+  // ブロック・S・トリガーは守る側が決める。攻撃した側が先に進められるのは、接続が切れたときだけ
+  const lost = !opp?.connected || !Net.connected();
   if (game.attack?.triggers) {
     bar.replaceChildren(
-      span('相手が S・トリガーを使うか決めています'),
-      button('待たずに進める', () => netUpdate(() => { game.attack = null; })),
+      span(lost ? '相手との接続が切れています（S・トリガーの確認待ち）' : '相手が S・トリガーを使うか決めています。お待ちください'),
+      ...(lost ? [button('待たずに進める', () => netUpdate(() => { game.attack = null; }))] : []),
     );
     return;
   }
   if (game.attack) {
     bar.replaceChildren(
-      span('相手の対応（ブロック）を待っています'),
-      button('ブロックなしで進める', () => resolveAttack(null)),
-      button('攻撃を取り消す', cancelAttack),
+      span(lost ? '相手との接続が切れています（ブロックの確認待ち）' : '相手がブロックするか決めています。お待ちください'),
+      ...(lost ? [button('ブロックなしで進める', () => resolveAttack(null)), button('攻撃を取り消す', cancelAttack)] : []),
     );
     return;
   }

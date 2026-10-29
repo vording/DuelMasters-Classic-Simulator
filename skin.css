@@ -292,7 +292,7 @@ button.civ-chip[aria-pressed="true"] { box-shadow: 0 0 0 2px #fff; }
 .curve { background: rgba(3, 10, 30, .5); border-radius: 10px; }
 .curve .fill { background: linear-gradient(180deg, var(--lime), var(--cyan)); border-radius: 3px 3px 0 0; }
 .curve .label { color: var(--muted); }
-.deck-stats .stat b { margin-right: 3px; font: 400 15px var(--font-en); color: #fff; }
+.deck-stats .stat b { margin: 0 2px 0 4px; font: 400 15px var(--font-en); color: #fff; }
 .deck-stats .stat.strong b { color: var(--lime); }
 .play-btn b { margin-right: 6px; font-size: 15px; }
 

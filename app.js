@@ -332,41 +332,22 @@ function renderResults() {
     el.tabIndex = 0;
     el.append(DM.cardFace(card, { lazy: true }));
     if (qty) el.append(Object.assign(document.createElement('span'), { className: 'badge', textContent: qty }));
-    // クリック（スマホはタップ）で詳細。右クリックで1枚減らす
-    el.addEventListener('click', () => {
-      $('hover-preview').hidden = true;
-      openDetail(card);
+    // クリック（スマホはタップ）で1枚追加、右クリックで1枚減らす、長押しで詳細
+    el.addEventListener('click', () => addCard(card));
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addCard(card);
+      else if (e.key === ' ') {
+        e.preventDefault();
+        openDetail(card);
+      }
     });
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') openDetail(card); });
     el.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       if (!phone()) removeCard(card);
     });
-    hoverPreview(el, card);
+    onLongPress(el, () => openDetail(card), { mouse: true });
     return el;
   }));
-}
-
-// PC：マウスを乗せたカードを、マウスの横に大きく出す
-function hoverPreview(el, card) {
-  el.addEventListener('mouseenter', (e) => {
-    if (phone()) return;
-    const box = $('hover-preview');
-    box.replaceChildren(DM.cardFace(card), Object.assign(document.createElement('p'), { textContent: DM.detailText(card) }));
-    box.hidden = false;
-    placePreview(e);
-  });
-  el.addEventListener('mousemove', placePreview);
-  el.addEventListener('mouseleave', () => { $('hover-preview').hidden = true; });
-}
-
-function placePreview(e) {
-  const box = $('hover-preview');
-  if (box.hidden) return;
-  const { width, height } = box.getBoundingClientRect();
-  const x = e.clientX + 24 + width > innerWidth ? e.clientX - width - 24 : e.clientX + 24;
-  box.style.left = `${Math.max(8, x)}px`;
-  box.style.top = `${Math.max(8, Math.min(e.clientY - height / 3, innerHeight - height - 8))}px`;
 }
 
 function renderDeckList() {
@@ -387,7 +368,7 @@ function renderDeck() {
   const entries = deckEntries().sort((a, b) => byCostName(a.card, b.card));
   $('deck-sort').value = activeDeck().sort ?? 'type';
   if (!entries.length) {
-    deck.innerHTML = '<p class="empty">カードをクリックすると詳細が開き、「＋ 1枚」で追加できます</p>';
+    deck.innerHTML = '<p class="empty">カードをクリック（スマホはタップ）で追加できます。長押しで詳細</p>';
     return;
   }
   deck.replaceChildren(...deckGroups(entries, activeDeck().sort).flatMap(([label, list]) => {
@@ -429,7 +410,8 @@ function renderStats() {
   $('deck-stats').replaceChildren(...items.filter(([, n], i) => n || i < 2).map(([label, n, cls]) => {
     const s = document.createElement('span');
     s.className = `stat ${cls}`;
-    s.append(Object.assign(document.createElement('b'), { textContent: n }), label);
+    // 「S・トリガー 4枚」の形（数字を先に書くと「4S・トリガー」と読みにくい）
+    s.append(label, Object.assign(document.createElement('b'), { textContent: n }), '枚');
     return s;
   }));
 }
@@ -449,12 +431,14 @@ function renderRow({ card, qty }) {
   }));
   row.querySelector('.minus').addEventListener('click', () => removeCard(card));
   row.querySelector('.plus').addEventListener('click', () => addCard(card));
-  // カード名のクリックで詳細
-  row.querySelector('.name').addEventListener('click', () => {
-    $('hover-preview').hidden = true;
-    openDetail(card);
+  // カード名：クリックで1枚追加、右クリックで1枚減らす、長押しで詳細
+  const name = row.querySelector('.name');
+  name.addEventListener('click', () => addCard(card));
+  name.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!phone()) removeCard(card);
   });
-  hoverPreview(row, card);
+  onLongPress(name, () => openDetail(card), { mouse: true });
   return row;
 }
 

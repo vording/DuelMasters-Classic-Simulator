@@ -1,13 +1,13 @@
 // スマホ：カードの長押しで拡大表示（両画面の <head> で読み込む）
 // onLongPress(el, fn)：タッチの長押し。showCardDetail({ name, image, text }, [[ボタン名, fn], ...])：拡大表示
 (function () {
-  // 長押し（タッチのみ）。長押し後に続けて起きる click は無視する
-  function onLongPress(el, fn) {
+  // 長押し（タッチのみ。mouse: true ならマウスの左ボタンの長押しも）。長押し後に続けて起きる click は無視する
+  function onLongPress(el, fn, { mouse = false } = {}) {
     let timer = null;
     let sx = 0;
     let sy = 0;
     el.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'mouse') return;
+      if (e.pointerType === 'mouse' && (!mouse || e.button !== 0)) return;
       // 端末によっては長押しの後に click が起きないので、次に触れたときに印を消す
       delete el.dataset.longpress;
       sx = e.clientX;
@@ -24,6 +24,7 @@
     });
     el.addEventListener('pointerup', cancel);
     el.addEventListener('pointercancel', cancel);
+    el.addEventListener('pointerleave', cancel);
     el.addEventListener('click', (e) => {
       if (!el.dataset.longpress) return;
       delete el.dataset.longpress;

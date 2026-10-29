@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=6">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=15">
+  <link rel="stylesheet" href="skin.css?v=16">
   <script src="device.js?v=1"></script>
-  <script src="zoom.js?v=2"></script>
+  <script src="zoom.js?v=3"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
@@ -44,7 +44,7 @@
           <div id="results" class="results"></div>
           <button id="more" class="more" hidden>さらに表示</button>
         </div>
-        <p class="status search-hint">クリック（スマホはタップ）で詳細を開いて追加・右クリックで1枚減らす</p>
+        <p class="status search-hint">クリック（スマホはタップ）で追加・右クリックで1枚減らす・長押しで詳細</p>
       </section>
 
       <section class="panel deck-panel">
@@ -96,9 +96,6 @@
     </footer>
   </div>
 
-  <!-- PC：カードにマウスを乗せたときの拡大 -->
-  <div id="hover-preview" class="hover-preview" hidden></div>
-
   <!-- クラシック基本編の殿堂（制限・禁止） -->
   <dialog id="reg-dialog" class="import-dialog reg-dialog">
     <h2 class="panel-head"><b>REGULATION</b><small>クラシック基本編の殿堂</small></h2>
@@ -147,6 +144,6 @@
   <script src="settings.js?v=3"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
