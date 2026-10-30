@@ -16,9 +16,10 @@
 <body>
   <!-- スタート画面（開いたとき最初に出す。真ん中の START でデッキ選択へ。app.js の showTitle / startFromTitle） -->
   <div class="title-screen" id="title-screen" hidden>
-    <!-- 真っ暗な画面にロゴだけ。ロゴを押すとスタート -->
+    <!-- 真っ暗な画面にロゴと TOUCH START だけ。画面のどこを押してもスタート -->
     <button type="button" id="title-start" class="title-start" aria-label="スタート">
       <img class="title-logo" src="img/logo.png" alt="デュエル・マスターズ">
+      <span class="title-touch" aria-hidden="true">TOUCH START</span>
     </button>
   </div>
   <script>

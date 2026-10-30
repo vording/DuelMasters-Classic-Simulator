@@ -143,7 +143,7 @@ function renderHome() {
 
 const TITLE_KEY = 'dm-deckmaker-title-seen';
 
-// 真っ暗な画面に、ふわふわ浮かんで点滅するロゴだけ
+// 真っ暗な画面に、ふわふわ浮かんで点滅するロゴと TOUCH START だけ
 function showTitle() {
   const screen = $('title-screen');
   screen.classList.remove('launch');
@@ -151,7 +151,7 @@ function showTitle() {
   $('title-start').focus({ preventScroll: true });
 }
 
-// ロゴを押す：光の輪と火花が広がり、ロゴが手前に飛んできて、ワイプでデッキ選択へ
+// 画面のどこかを押す：光の輪と火花が広がり、ロゴが手前に飛んできて、ワイプでデッキ選択へ
 let starting = false;
 async function startFromTitle() {
   if (starting) return;
@@ -681,8 +681,8 @@ function init() {
     if (!location.hash.startsWith('#deck=')) changeView();
   });
 
-  // スタート画面：ロゴを押すとスタート（Enter・スペースでも）。上のロゴを押すとスタート画面に戻る
-  $('title-start').addEventListener('click', startFromTitle);
+  // スタート画面：画面のどこを押してもスタート（Enter・スペースでも）。上のロゴを押すとスタート画面に戻る
+  $('title-screen').addEventListener('click', startFromTitle);
   document.querySelector('.topbar .logo').addEventListener('click', () => Wipe.run(showTitle));
   document.querySelector('.topbar .logo').style.cursor = 'pointer';
 
