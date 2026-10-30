@@ -1418,7 +1418,33 @@ function updateBgm() {
   Bgm.play(started() && !$('setup').open ? 'battle' : 'ready');
 }
 
+// ---------- 召喚の演出 ----------
+// バトルゾーンに新しく出たカードを少しのあいだ光らせる。描き直しても途中から続けるよう、出た時刻を覚えておく
+const SUMMON_MS = 700;
+const summonFx = { me: { seen: null, at: new Map() }, opp: { seen: null, at: new Map() } };
+
+// 前に描いたときになかったカードを「出た」とする（最初に描くときは、すでにあったものとして扱う）
+function trackSummons(side, iids) {
+  const s = summonFx[side];
+  const now = Date.now();
+  if (!iids) {
+    s.seen = null;
+    return;
+  }
+  if (s.seen) for (const iid of iids) if (!s.seen.has(iid)) s.at.set(iid, now);
+  s.seen = new Set(iids);
+  for (const [iid, t] of s.at) if (now - t > SUMMON_MS || !s.seen.has(iid)) s.at.delete(iid);
+}
+
+function markSummon(el, side, iid) {
+  const t = summonFx[side].at.get(iid);
+  if (t == null) return;
+  el.classList.add('summoned');
+  el.style.setProperty('--summon-delay', `${t - Date.now()}ms`);
+}
+
 function renderBattlefield() {
+  trackSummons('me', game.zones.battlefield);
   fillZone('bf-main', game.zones.battlefield, 'battlefield');
   fillZone('bf-shields', game.zones.shields, 'shields');
   fillZone('bf-mana', game.zones.mana, 'mana');
@@ -1627,6 +1653,7 @@ function cardEl(iid, zone) {
   }
   if (zone === 'battlefield') {
     addBadges(el, c);
+    markSummon(el, 'me', iid);
     if (myTurn() && isSick(c)) el.classList.add('sick');
     if (canAttackNow(c)) el.classList.add('can-attack');
   }
@@ -1785,7 +1812,12 @@ function renderOpp() {
   $('opp-shield-count').textContent = st ? st.shields : '–';
   const count = (z) => (Array.isArray(st[z]) ? st[z].length : st[z]);
   for (const z of ['library', 'hand', 'graveyard']) $(`opp-${z}-count`).textContent = st ? count(z) : '–';
-  $('opp-main').replaceChildren(...(st?.battlefield ?? []).map(oppCardEl));
+  trackSummons('opp', st ? st.battlefield.map((c) => c.iid) : null);
+  $('opp-main').replaceChildren(...(st?.battlefield ?? []).map((c) => {
+    const el = oppCardEl(c);
+    markSummon(el, 'opp', c.iid);
+    return el;
+  }));
   // 相手が処理中の呪文
   $('opp-resolving').hidden = !st?.resolving?.length;
   $('opp-resolving').replaceChildren(...(st?.resolving ?? []).map(oppCardEl));
@@ -1944,9 +1976,11 @@ function setupNet() {
   Net.on('peek', receivePeek);
   Net.on('peekReply', receivePeekReply);
   Net.on('chat', (msg) => {
-    chat.push({ ts: Date.now(), who: 'opp', name: oppName(), text: String(msg.text).slice(0, 300) });
+    const text = String(msg.text).slice(0, 300);
+    chat.push({ ts: Date.now(), who: 'opp', name: oppName(), text });
     saveJson(sessionStorage, CHAT_KEY, chat.slice(-200));
     renderLog();
+    floatChat('opp', oppName(), text);
   });
 }
 
@@ -1975,6 +2009,31 @@ function sendChat(e) {
   Net.send({ type: 'chat', text });
   $('chat-input').value = '';
   renderLog();
+  floatChat('me', myName(), text);
+}
+
+// チャットはログに残すほか、フィールドの上を右から左へ流す（重ならないよう段を順に使う）
+const CHAT_LANES = 4;
+let chatLane = 0;
+function floatChat(who, name, text) {
+  const board = document.querySelector('.board');
+  if (!board) return;
+  const el = document.createElement('div');
+  el.className = `chat-float ${who}`;
+  el.append(Object.assign(document.createElement('span'), { className: 'who', textContent: `${name}：` }), text);
+  el.style.top = `${12 + (chatLane++ % CHAT_LANES) * 12}%`;
+  board.append(el);
+  // 動きを減らす設定のときは流さず、少し表示して消す
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.style.left = '12px';
+    setTimeout(() => el.remove(), 4000);
+    return;
+  }
+  const dist = board.clientWidth + el.offsetWidth;
+  el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dist}px)` }], {
+    duration: Math.min(9000, 4000 + dist * 4),
+    easing: 'linear',
+  }).finished.then(() => el.remove(), () => el.remove());
 }
 
 // ---------- メニュー ----------
