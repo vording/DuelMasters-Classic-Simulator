@@ -634,12 +634,17 @@ html.phone .deck-tile { padding: 8px; }
 .cutin.order { --cutin-civ: var(--lime); }
 .cutin.order .cutin-text { align-items: center; text-align: center; }
 .cutin.order .cutin-title { color: #ffd400; font-size: clamp(40px, 11vw, 110px); }
-/* ---------- スタート画面（app.js の showTitle / startFromTitle）：真っ暗にロゴだけ。ロゴがスタートボタン ---------- */
-.title-screen { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; overflow: hidden; background: #000; }
+/* ---------- スタート画面（app.js の showTitle / startFromTitle）：真っ暗にロゴと TOUCH START だけ。画面のどこを押してもスタート ---------- */
+.title-screen { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; }
 .title-screen[hidden] { display: none; }
-.title-start, .title-start:hover:not(:disabled), .title-start:active:not(:disabled), .title-start:focus-visible { padding: 16px; background: none; border: 0; box-shadow: none; outline: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.title-start, .title-start:hover:not(:disabled), .title-start:active:not(:disabled), .title-start:focus-visible { display: flex; flex-direction: column; align-items: center; gap: clamp(24px, 6vh, 56px); padding: 16px; background: none; border: 0; box-shadow: none; outline: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .title-logo { display: block; width: min(620px, 86vw); height: auto; filter: drop-shadow(0 0 24px rgba(31, 191, 255, .45));
   animation: title-in 1.2s ease-out both, title-bob 4s ease-in-out 1.2s infinite, title-glow 2.4s ease-in-out 1.2s infinite; }
+.title-touch { font: 400 clamp(16px, 3.6vw, 24px)/1 var(--font-en); letter-spacing: .4em; padding-left: .4em; color: #fff; text-shadow: 0 0 12px rgba(31, 191, 255, .8);
+  animation: title-in 1.2s ease-out .4s both, title-blink 1.4s ease-in-out 1.6s infinite; }
+.title-screen.launch .title-touch { animation: title-out .3s ease-in both; }
+@keyframes title-blink { 50% { opacity: .15; } }
+@keyframes title-out { to { opacity: 0; } }
 @keyframes title-in { from { opacity: 0; transform: scale(.94); } }
 @keyframes title-bob { 50% { transform: translateY(-12px); } }
 @keyframes title-glow { 50% { opacity: .35; filter: drop-shadow(0 0 6px rgba(31, 191, 255, .2)); } }
@@ -660,7 +665,7 @@ html.phone .deck-tile { padding: 8px; }
 @keyframes title-zoom { 0% { transform: scale(1); } 25% { transform: scale(.92) rotate(-2deg); } 100% { transform: scale(4.5) rotate(4deg); opacity: 0; filter: blur(6px) brightness(2); } }
 @keyframes title-flash { 0% { opacity: 0; } 15% { opacity: .9; } 40% { opacity: .2; } 70% { opacity: .5; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .title-logo { animation: none !important; }
+  .title-logo, .title-touch { animation: none !important; }
 }
 /* ---------- 召喚の演出（play.js の markSummon・summonBanner） ---------- */
 /* カード：大きく光りながら叩きつけるように着地し、光の輪が2重に広がる */
