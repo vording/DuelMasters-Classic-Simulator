@@ -346,8 +346,9 @@ function undo() {
   render();
 }
 
-function log(text) {
-  game.log.push({ turn: game.turn, text, ts: Date.now() });
+// pub：相手に見せる文（null なら相手には見せない）。省略すると text をそのまま見せる
+function log(text, pub) {
+  game.log.push({ turn: game.turn, text, ts: Date.now(), ...(pub !== undefined ? { pub } : {}) });
 }
 
 const zoneOf = (iid) => Object.keys(game.zones).find((z) => game.zones[z].includes(iid));
@@ -759,15 +760,30 @@ function chargeMana(iid) {
 
 // ---------- シールド・S・トリガー ----------
 
-// シールドを手札に加える（S・トリガーがあれば使うか選ぶ）
+// シールドを手札に加える。S・トリガーがあるかどうかを相手に悟られないよう、
+// どのカードでも確認の画面を出す（S・トリガーなら使うか選び、なければ確認するだけ）
 function breakShield(iid) {
   if (zoneOf(iid) !== 'shields') return;
   const c = game.cards[iid];
   moveCard(iid, 'hand', { silent: true });
   // フ・レイル・ギガボルバがいると、その文明の S・トリガーは使えない
   const blocked = c.ab.sTrigger && triggerBlocked(c);
-  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? (blocked ? '（S・トリガーは使えない）' : '（S・トリガー）') : ''}`);
-  if (c.ab.sTrigger && !blocked) game.triggers.push(iid);
+  // 相手のログにはカード名を出さない
+  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? (blocked ? '（S・トリガーは使えない）' : '（S・トリガー）') : ''}`, 'シールドをブレイク：手札へ');
+  game.triggers.push(iid);
+  if (!c.ab.sTrigger || blocked) game.plainBreaks = [...(game.plainBreaks ?? []), iid];
+}
+
+// S・トリガーとして使えるか（使えないブレイクしたカードは確認するだけ）
+const isTrigger = (iid) => !(game.plainBreaks ?? []).includes(iid);
+
+// S・トリガーではないブレイクしたカードを確認した
+function confirmShield(iid) {
+  act(() => {
+    game.triggers = game.triggers.filter((x) => x !== iid);
+    game.plainBreaks = (game.plainBreaks ?? []).filter((x) => x !== iid);
+  });
+  finishTriggers();
 }
 
 function breakShields(n) {
@@ -801,7 +817,7 @@ async function useTrigger(iid) {
 function skipTrigger(iid) {
   act(() => {
     game.triggers = game.triggers.filter((x) => x !== iid);
-    log(`${game.cards[iid].name}のS・トリガーを使わない`);
+    log(`${game.cards[iid].name}のS・トリガーを使わない`, null);
   });
   finishTriggers();
 }
@@ -1487,11 +1503,22 @@ function renderBanner() {
     const rest = pendingTriggers() - 1;
     bar.classList.add('trigger');
     const choices = Object.assign(document.createElement('div'), { className: 'choices' });
+    const more = rest ? `（ほかに${rest}枚）` : '';
+    if (!isTrigger(trigger)) {
+      choices.append(button('確認', () => confirmShield(trigger), true));
+      bar.replaceChildren(
+        span('SHIELD BREAK', 'trigger-title'),
+        DM.cardFace(c),
+        span(`${c.name}を手札に加えました${more}`, 'banner-title'),
+        choices,
+      );
+      return;
+    }
     choices.append(button('使う', () => useTrigger(trigger), true), button('使わない', () => skipTrigger(trigger)));
     bar.replaceChildren(
       span('SHIELD TRIGGER', 'trigger-title'),
       DM.cardFace(c),
-      span(`${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？${rest ? `（ほかに${rest}枚）` : ''}`, 'banner-title'),
+      span(`${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？${more}`, 'banner-title'),
       choices,
     );
     return;
@@ -1816,7 +1843,8 @@ function snapshot() {
     mana: game.zones.mana.map(pub),
     graveyard: game.zones.graveyard.map(pub),
     resolving: resolving().map(pub),
-    log: game.log.slice(-150),
+    // 相手に見せない記録は除き、相手向けの文があれば差し替える
+    log: game.log.slice(-150).filter((e) => e.pub !== null).map(({ pub, ...e }) => (pub ? { ...e, text: pub } : e)),
     result: game.result ?? null,
   };
 }
@@ -2166,7 +2194,8 @@ function init() {
   });
 
   // ゲームがないまま開始画面を閉じると操作できない画面が残るので、閉じさせない
-  $('setup').addEventListener('cancel', (e) => { if (!game) e.preventDefault(); });
+  // ゲームが終わったあとも、対戦準備画面から次のゲームを始める
+  $('setup').addEventListener('cancel', (e) => { if (!game || currentResult()) e.preventDefault(); });
   $('setup').addEventListener('close', () => {
     if (!game) $('setup').showModal();
     // 開始画面を閉じてゲームに戻ったら、対戦中の曲に戻す
@@ -2178,11 +2207,9 @@ function init() {
   $('setup-settings').addEventListener('click', Settings.open);
   window.addEventListener('settingschange', onSettingsChange);
   renderAvatars();
-  $('result-close').addEventListener('click', () => $('result').close());
-  $('result-again').addEventListener('click', () => {
-    $('result').close();
-    openSetup();
-  });
+  // 勝敗の画面を閉じたら、毎回対戦準備画面に戻る
+  $('result-again').addEventListener('click', () => $('result').close());
+  $('result').addEventListener('close', () => { if (currentResult() && !$('setup').open) openSetup(); });
   for (const r of $('setup-form').elements.mode) r.addEventListener('change', updateSetupMode);
   $('chat-form').addEventListener('submit', sendChat);
   $('room-share').addEventListener('click', shareRoomCode);
