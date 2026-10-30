@@ -738,8 +738,13 @@ html.phone .deck-tile { padding: 8px; }
 /* スマホはシールドを重ねて並べるので、名前は出さず印だけ（長押しで中身） */
 html.phone .card.shield.planted .planted-name { display: none; }
 html.phone .card.shield.planted::before { content: "★"; padding: 0 2px; font-size: 8px; line-height: 12px; }
+/* 効果でシールドを選ぶ画面では、スマホでも名前を出す */
+.fx-cards .card.shield.planted { outline: 3px solid #ffd400; outline-offset: 1px; }
+html.phone .fx-cards .card.shield.planted .planted-name { display: block; }
+html.phone .fx-cards .card.shield.planted::before { content: "仕込"; padding: 0 3px; font-size: 9px; line-height: 14px; }
 
 /* ---------- 「ゲームの開始」画面：後ろの戦場を隠し、マッチング画面と同じ背景にする ---------- */
 #setup::backdrop {
   background: radial-gradient(circle at 50% 38%, rgba(31, 107, 255, .35), transparent 60%), repeating-linear-gradient(0deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), #040a1e;
 }
+.fx-cards .card.fx-pick.planted.picked { outline-color: var(--lime); }
