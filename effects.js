@@ -828,6 +828,12 @@ function fxChoose({ src, title, items = [], min = 0, max = 0, hidden = false, sk
       if (item.side === 'opp' && !hidden) el.append(Object.assign(document.createElement('span'), { className: 'fx-side', textContent: '相手' }));
       if (item.card?.tapped) el.classList.add('tapped');
       el.title = hidden ? '' : `${item.card.name}\n${DM.detailText(item.card)}`;
+      // 自分で仕込んだシールドは、裏向きでも印とカード名を出す（エメラルなどで引かないように）
+      if (hidden && item.side === 'me' && item.card?.planted) {
+        el.classList.add('shield', 'planted');
+        el.append(Object.assign(document.createElement('span'), { className: 'planted-name', textContent: item.card.name }));
+        el.title = `仕込んだカード：${item.card.name}`;
+      }
       el.disabled = max === 0;
       el.addEventListener('click', () => {
         if (picked.has(i)) picked.delete(i);
