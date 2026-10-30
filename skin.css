@@ -459,7 +459,6 @@ body.online .banner { border-radius: 0; border-width: 1px 0; box-shadow: none; b
 @keyframes trigger-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.8) rotate(-2deg); } }
 .log li:last-child { color: var(--lime); }
 .log .t { color: var(--cyan); font-family: var(--font-en); font-size: 11px; }
-.room-banner { background: #0a1a46; border: 1px solid var(--lime); border-radius: 14px; }
 .room-code-big { color: var(--lime); animation: blink 2.4s ease-in-out infinite; }
 .result-title { font-family: var(--font-en); font-style: italic; font-weight: 400; }
 
@@ -708,15 +707,66 @@ html.phone .deck-tile { padding: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .title-rays, .title-grid, .title-card, .title-logo, .title-start, .title-start::after, .title-hint { animation: none !important; }
 }
-/* ---------- 召喚の演出（play.js の markSummon）：上から降りて光の輪が広がる ---------- */
-.card.summoned .dm-face { animation: summon-card .7s cubic-bezier(.2, .9, .3, 1.2) var(--summon-delay, 0ms) both; }
-.card.summoned::before { content: ''; position: absolute; inset: -6px; border-radius: 10px; border: 3px solid var(--lime); box-shadow: 0 0 18px var(--lime); pointer-events: none;
-  animation: summon-ring .7s ease-out var(--summon-delay, 0ms) both; }
-@keyframes summon-card { 0% { opacity: 0; transform: translateY(-40%) scale(1.35); filter: brightness(2.2); } 55% { opacity: 1; transform: translateY(0) scale(.96); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
-@keyframes summon-ring { 0%, 40% { opacity: 0; transform: scale(.9); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.35); } }
+/* ---------- 召喚の演出（play.js の markSummon・summonBanner） ---------- */
+/* カード：大きく光りながら叩きつけるように着地し、光の輪が2重に広がる */
+.card.summoned { z-index: 3; }
+.card.summoned .dm-face { animation: summon-card 1.1s cubic-bezier(.2, .9, .3, 1.15) var(--summon-delay, 0ms) both; }
+.card.summoned::before { content: ''; position: absolute; inset: -6px; z-index: -1; border-radius: 12px; border: 4px solid var(--lime); box-shadow: 0 0 26px var(--lime), inset 0 0 18px var(--lime); pointer-events: none;
+  animation: summon-ring 1.1s ease-out var(--summon-delay, 0ms) both; }
+@keyframes summon-card {
+  0% { opacity: 0; transform: translateY(-60%) scale(2.4) rotate(-8deg); filter: brightness(3) drop-shadow(0 0 20px #fff); }
+  35% { opacity: 1; transform: translateY(0) scale(.92) rotate(0); filter: brightness(2) drop-shadow(0 0 24px var(--lime)); }
+  48% { transform: scale(1.08); }
+  62% { transform: scale(1); filter: brightness(1.3) drop-shadow(0 0 12px var(--lime)); }
+  100% { transform: none; filter: none; }
+}
+@keyframes summon-ring { 0%, 30% { opacity: 0; transform: scale(.8); } 40% { opacity: 1; } 100% { opacity: 0; transform: scale(1.9); } }
+
+/* 戦場の中央を横切る「SUMMON!」の帯（カード名つき） */
+.summon-banner { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; overflow: hidden; pointer-events: none; }
+.summon-band { position: absolute; left: -10%; right: -10%; top: 50%; height: clamp(84px, 22%, 150px); transform: translateY(-50%) skewY(-6deg);
+  background: repeating-linear-gradient(115deg, rgba(255, 255, 255, .16) 0 12px, transparent 12px 30px), linear-gradient(90deg, transparent, var(--summon-civ) 30%, var(--summon-civ) 70%, transparent);
+  box-shadow: 0 0 30px var(--summon-civ); animation: summon-band 1.1s ease-out both; }
+.summon-inner { position: relative; display: flex; align-items: center; gap: clamp(8px, 2vw, 18px); max-width: 94%; transform: skewY(-6deg); animation: summon-inner 1.1s cubic-bezier(.2, .9, .25, 1.1) both; }
+.summon-card .dm-face { width: clamp(56px, 12vw, 104px); border-radius: 7px; box-shadow: 0 0 0 2px #fff, 0 0 24px var(--summon-civ); }
+.summon-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.summon-text b { font: 400 clamp(26px, 6vw, 56px)/1 var(--font-en); letter-spacing: .04em; color: #fff; -webkit-text-stroke: 2px #08122e; text-shadow: 0 3px 0 #08122e, 0 0 24px var(--summon-civ); white-space: nowrap; }
+.summon-text span { font-weight: 900; font-size: clamp(13px, 2.6vw, 22px); color: #fff; text-shadow: 0 2px 5px #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summon-banner.opp .summon-text span { color: #ffb4a8; }
+@keyframes summon-band { 0% { opacity: 0; transform: translateY(-50%) skewY(-6deg) scaleY(0); } 15% { opacity: 1; transform: translateY(-50%) skewY(-6deg) scaleY(1.15); } 25% { transform: translateY(-50%) skewY(-6deg) scaleY(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50%) skewY(-6deg) scaleY(.2); } }
+@keyframes summon-inner { 0% { opacity: 0; transform: skewY(-6deg) translateX(60%); } 22% { opacity: 1; transform: skewY(-6deg) translateX(-4%); } 32% { transform: skewY(-6deg) translateX(0); } 78% { opacity: 1; } 100% { opacity: 0; transform: skewY(-6deg) translateX(-40%); } }
 
 /* ---------- チャットをフィールドに流す（play.js の floatChat） ---------- */
 .chat-float { position: absolute; left: 100%; z-index: 30; padding: 3px 12px; font-weight: 800; font-size: clamp(13px, 2.2vw, 18px); color: #fff; white-space: nowrap;
   background: rgba(4, 10, 30, .55); border-radius: 999px; text-shadow: 0 1px 3px #000; pointer-events: none; }
 .chat-float .who { color: var(--cyan); font-size: .8em; }
 .chat-float.opp .who { color: #ffb4a8; }
+
+/* ---------- ネット対戦：マッチング画面（play.js の renderMatching） ---------- */
+.matching { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 2.4vh, 22px); padding: 16px; overflow: hidden auto; text-align: center;
+  background: radial-gradient(circle at 50% 38%, rgba(31, 107, 255, .35), transparent 60%), repeating-linear-gradient(0deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), #040a1e;
+  animation: fade-in .3s ease-out both; }
+.matching[hidden] { display: none; }
+.matching-radar { position: absolute; left: 50%; top: 38%; width: min(120vw, 900px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; }
+.matching-radar span { position: absolute; inset: 0; border: 2px solid rgba(200, 255, 46, .5); border-radius: 50%; opacity: 0; animation: radar 3s ease-out infinite; }
+.matching-radar span:nth-child(2) { animation-delay: 1s; }
+.matching-radar span:nth-child(3) { animation-delay: 2s; }
+@keyframes radar { 0% { opacity: .9; transform: scale(.05); } 100% { opacity: 0; transform: scale(1); } }
+.matching > :not(.matching-radar) { position: relative; }
+.matching-title { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.matching-title b { font: 400 clamp(34px, 9vw, 64px)/1 var(--font-en); letter-spacing: .12em; color: var(--lime); text-shadow: 0 0 24px rgba(200, 255, 46, .6); animation: blink 1.6s ease-in-out infinite; }
+.matching.found .matching-title b { color: #fff; animation: none; }
+.matching-title small { font-size: 15px; font-weight: 800; color: #fff; }
+.matching-vs { display: flex; align-items: center; gap: clamp(12px, 5vw, 40px); }
+.matching-player { display: flex; flex-direction: column; align-items: center; gap: 6px; width: clamp(96px, 28vw, 150px); }
+.matching-player .avatar { width: clamp(64px, 20vw, 110px); border-radius: 14px; border: 2px solid var(--cyan); box-shadow: 0 0 18px rgba(57, 208, 255, .5); background-size: cover; }
+.matching-player .name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: #fff; }
+.matching-player.opp .avatar { border-color: #ff7a6a; box-shadow: 0 0 18px rgba(255, 122, 106, .5); background-color: rgba(255, 255, 255, .06); }
+.matching:not(.found) .matching-player.opp .avatar { animation: blink 1.2s ease-in-out infinite; }
+.matching.found .matching-player.opp { animation: pop-in .3s ease-out both; }
+.matching-vs-mark { font: 400 clamp(28px, 7vw, 48px)/1 var(--font-en); color: #ffd400; -webkit-text-stroke: 1px #08122e; text-shadow: 0 3px 0 #08122e; }
+.matching-code { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; padding: 12px 18px; max-width: 100%; background: rgba(10, 26, 70, .9); border: 1px solid var(--lime); border-radius: 14px; }
+.matching-code .room-label { color: var(--muted); }
+.matching-code .room-code-big { font: 400 clamp(34px, 10vw, 52px)/1 var(--font-en); letter-spacing: .14em; color: var(--lime); user-select: all; -webkit-user-select: all; }
+.matching-code .room-note { flex-basis: 100%; color: var(--muted); font-size: 13px; }
+.matching-status { min-height: 1.4em; margin: 0; font-size: 13px; color: var(--muted); }

@@ -402,20 +402,6 @@ body.online .opp-area { flex: 0 0 auto; }
 .room-code { width: 110px; margin-left: 4px; text-transform: uppercase; }
 .room-code:disabled { opacity: .4; }
 
-.room-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 6px 12px;
-  margin: 10px auto 0;
-  padding: 10px 16px;
-  max-width: calc(100% - 20px);
-  text-align: center;
-  background: #3a3a3a;
-  border: 1px solid #000;
-  box-shadow: var(--raised);
-}
 .room-label { color: var(--muted); }
 .room-code-big { font: bold 30px Consolas, "Courier New", monospace; letter-spacing: .18em; color: #fff; user-select: all; -webkit-user-select: all; }
 .room-note { flex-basis: 100%; color: var(--muted); font-size: 13px; }
@@ -545,3 +531,34 @@ html.phone .topbar #undo::before { margin: 0; }
 html.phone .topbar #restart::before { content: '↻'; font-size: 18px; line-height: 1; }
 html.phone .topbar .net-status:empty { display: none; }
 html.phone .app > .topbar { gap: 6px; }
+
+/* ---------- スマホの戦場：縦に収まるよう、シールドとマナを横に並べて1行にする ---------- */
+/* 自分：バトルゾーン／シールド・マナ。相手：マナ・シールド／バトルゾーン。列は折り返さず、あふれたら横にスクロール */
+html.phone .ticker { display: none; }
+html.phone .battlefield { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: end; gap: 4px 6px; overflow: hidden; }
+html.phone .battlefield.opp { align-content: start; }
+html.phone .battlefield > .bf-row { grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+html.phone .battlefield > .bf-row::-webkit-scrollbar { display: none; }
+html.phone .battlefield > .shield-row { grid-column: 1; grid-row: 2; }
+html.phone .battlefield > .mana-row { grid-column: 2; grid-row: 2; }
+html.phone .battlefield.opp > .mana-row { grid-column: 1; grid-row: 1; }
+html.phone .battlefield.opp > .shield-row { grid-column: 2; grid-row: 1; }
+html.phone .battlefield.opp > #opp-main { grid-row: 2; }
+html.phone .battlefield.opp > #opp-resolving { grid-row: 3; }
+html.phone .shield-row, html.phone .mana-row { --row-w: calc(var(--card-w) * .6); gap: 0; padding-top: 5px; }
+html.phone body.online .shield-row, html.phone body.online .mana-row { --row-w: calc(var(--card-w) * .66); }
+html.phone body.online .battlefield.opp .shield-row, html.phone body.online .battlefield.opp .mana-row { --row-w: calc(var(--card-w) * .56); }
+/* シールド・マナは少しずつ重ねて並べる。マナのタップは横にせず暗くする（重ねても幅が変わらないように） */
+html.phone .mana-row .card.tapped { transform: none; margin: 0; }
+html.phone .shield-row .card + .card, html.phone .mana-row .card + .card { margin-left: calc(var(--row-w) * -.42); }
+html.phone .mana-row .card.tapped .dm-face { filter: brightness(.45); }
+
+/* カードの大きさ：戦場（.board）の高さから決める（相手と自分の盤面・手札がすべて収まる大きさ）
+   一人回し：バトルゾーン＋シールド・マナ（0.6）＋手札。対戦：さらに相手のバトルゾーン・シールド・マナと案内の帯 */
+html.phone .board { container-type: size; --card-w: clamp(48px, calc((100cqh - 84px) / 3.75), 88px); }
+html.phone .board .hand { --card-w: clamp(52px, calc((100cqh - 84px) / 3.75), 84px); }
+html.phone body.online .board { --card-w: clamp(30px, calc((100cqh - 150px) / 5.8), 80px); }
+html.phone body.online .board .hand { --card-w: clamp(42px, calc((100cqh - 150px) / 6.4), 72px); }
+html.phone .hand { min-height: calc(var(--card-w) * 1.395 + 6px); padding: 3px 6px 2px; }
+html.phone body.online .zone-label, html.phone body.online .opp-status { height: 20px; line-height: 20px; font-size: 12px; }
+html.phone body.online .battlefield { padding: 4px 6px; }

@@ -27,9 +27,9 @@ const Net = (() => {
     try { conn.send(msg); return true; } catch { return false; }
   }
 
+  // 部屋コード：6桁の数字
   function newCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    return Array.from(crypto.getRandomValues(new Uint8Array(6)), (n) => chars[n % chars.length]).join('');
+    return String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
   }
 
   function scheduleRetry(fn) {
@@ -176,7 +176,7 @@ const Net = (() => {
     connected,
     newCode,
     host: (c = newCode()) => start('host', c),
-    join: (c) => start('guest', c.trim().toUpperCase()),
+    join: (c) => start('guest', c.replace(/\s/g, '').toUpperCase()),
     stop,
     get role() { return role; },
     get code() { return code; },

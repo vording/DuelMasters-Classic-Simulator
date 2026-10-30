@@ -1419,21 +1419,44 @@ function updateBgm() {
 }
 
 // ---------- 召喚の演出 ----------
-// バトルゾーンに新しく出たカードを少しのあいだ光らせる。描き直しても途中から続けるよう、出た時刻を覚えておく
-const SUMMON_MS = 700;
+// バトルゾーンに新しく出たカードを大きく光らせ、戦場の中央に「SUMMON!」の帯を出す。
+// 描き直しても途中から続けるよう、出た時刻を覚えておく
+const SUMMON_MS = 1100;
 const summonFx = { me: { seen: null, at: new Map() }, opp: { seen: null, at: new Map() } };
 
 // 前に描いたときになかったカードを「出た」とする（最初に描くときは、すでにあったものとして扱う）
-function trackSummons(side, iids) {
+// cardOf：iid → カード（帯に出す名前・絵に使う）
+function trackSummons(side, iids, cardOf) {
   const s = summonFx[side];
   const now = Date.now();
   if (!iids) {
     s.seen = null;
     return;
   }
-  if (s.seen) for (const iid of iids) if (!s.seen.has(iid)) s.at.set(iid, now);
+  if (s.seen) {
+    const fresh = iids.filter((iid) => !s.seen.has(iid));
+    for (const iid of fresh) s.at.set(iid, now);
+    const shown = fresh.map(cardOf).find((c) => c?.isCreature);
+    if (shown) summonBanner(shown, side === 'me');
+  }
   s.seen = new Set(iids);
   for (const [iid, t] of s.at) if (now - t > SUMMON_MS || !s.seen.has(iid)) s.at.delete(iid);
+}
+
+// 戦場の中央を横切る帯（呪文・S・トリガーの演出が出ているときは重ねない）
+function summonBanner(card, mine) {
+  const board = document.querySelector('.board');
+  if (!board || document.querySelector('.cutin')) return;
+  board.querySelector('.summon-banner')?.remove();
+  const el = document.createElement('div');
+  el.className = `summon-banner${mine ? '' : ' opp'}`;
+  el.style.setProperty('--summon-civ', `var(--civ-${DM.civOf(card.civs?.[0])?.cls ?? 'light'})`);
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = '<div class="summon-band"></div><div class="summon-inner"><div class="summon-card"></div><div class="summon-text"><b>SUMMON!</b><span></span></div></div>';
+  el.querySelector('.summon-card').append(DM.cardFace(card));
+  el.querySelector('.summon-text span').textContent = `${mine ? '' : `${oppName()}の`}${card.name}`;
+  board.append(el);
+  setTimeout(() => el.remove(), SUMMON_MS + 200);
 }
 
 function markSummon(el, side, iid) {
@@ -1444,7 +1467,7 @@ function markSummon(el, side, iid) {
 }
 
 function renderBattlefield() {
-  trackSummons('me', game.zones.battlefield);
+  trackSummons('me', game.zones.battlefield, (iid) => game.cards[iid]);
   fillZone('bf-main', game.zones.battlefield, 'battlefield');
   fillZone('bf-shields', game.zones.shields, 'shields');
   fillZone('bf-mana', game.zones.mana, 'mana');
@@ -1812,7 +1835,7 @@ function renderOpp() {
   $('opp-shield-count').textContent = st ? st.shields : '–';
   const count = (z) => (Array.isArray(st[z]) ? st[z].length : st[z]);
   for (const z of ['library', 'hand', 'graveyard']) $(`opp-${z}-count`).textContent = st ? count(z) : '–';
-  trackSummons('opp', st ? st.battlefield.map((c) => c.iid) : null);
+  trackSummons('opp', st ? st.battlefield.map((c) => c.iid) : null, (iid) => st.battlefield.find((c) => c.iid === iid));
   $('opp-main').replaceChildren(...(st?.battlefield ?? []).map((c) => {
     const el = oppCardEl(c);
     markSummon(el, 'opp', c.iid);
@@ -1842,9 +1865,26 @@ function renderOpp() {
   else label = `${oppName()}：ターン${st.turn}${st.waiting ? '（待機中）' : `・${phaseName(st.phase)}`}`;
   $('opp-status').textContent = label;
   $('opp-area').classList.toggle('active-turn', !!st && st.turn > 0 && !st.waiting);
-  const waitingGuest = Net.role === 'host' && !opp?.connected;
-  $('room-banner').hidden = !waitingGuest;
-  if (waitingGuest) $('room-code-big').textContent = Net.code;
+  renderMatching();
+}
+
+// ネット対戦：手札を配る（マッチングする）までは、マッチング画面を出す
+function renderMatching() {
+  const show = online() && !!game && !game.dealt && !game.result;
+  $('matching').hidden = !show;
+  if (!show) return;
+  const host = Net.role === 'host';
+  const found = !!opp?.connected && Net.connected();
+  $('matching').classList.toggle('found', found);
+  $('matching-sub').textContent = found ? '対戦相手が見つかりました' : host ? '対戦相手を待っています' : '部屋に接続しています';
+  $('matching-my-avatar').style.backgroundImage = avatarImage(myAvatar());
+  $('matching-my-name').textContent = myName();
+  $('matching-opp-avatar').style.backgroundImage = found ? avatarImage(validAvatar(opp?.avatar)) : 'none';
+  $('matching-opp-name').textContent = found ? oppName() : '？？？';
+  $('room-code-big').textContent = Net.code ?? '';
+  $('room-note').textContent = host ? 'このコードを相手に伝えてください' : 'この部屋に入ります';
+  $('room-share').hidden = !host;
+  $('matching-status').textContent = found ? 'まもなく対戦を始めます…' : $('net-status').textContent;
 }
 
 // 相手に見せるカード（効果で得ている能力・パワーを足しておく）
@@ -1909,6 +1949,7 @@ function setupNet() {
   Net.on('status', ({ text, state }) => {
     $('net-status').textContent = text;
     $('net-status').dataset.state = state;
+    if (!$('matching').hidden) renderMatching();
   });
   Net.on('open', () => {
     opp = { ...opp, connected: true };
@@ -2166,9 +2207,10 @@ function startFromSetup(e) {
   }
   const form = new FormData($('setup-form'));
   const mode = form.get('mode');
-  const code = String(form.get('room') ?? '').trim().toUpperCase();
-  if (mode === 'join' && !/^[A-Z0-9]{4,12}$/.test(code)) {
-    $('setup-error').textContent = '部屋コードを入力してください。';
+  // 部屋コードは6桁の数字（全角の数字・空白やハイフンが混ざっていてもよい）
+  const code = String(form.get('room') ?? '').normalize('NFKC').replace(/\D/g, '');
+  if (mode === 'join' && !/^\d{6}$/.test(code)) {
+    $('setup-error').textContent = '部屋コード（6桁の数字）を入力してください。';
     return;
   }
 
@@ -2177,7 +2219,7 @@ function startFromSetup(e) {
     Net.stop();
     netInfo = null;
     opp = null;
-  } else if (mode === 'host' && !(Net.role === 'host')) {
+  } else if (mode === 'host' && !(Net.role === 'host' && /^\d{6}$/.test(Net.code))) {
     Net.stop();
     opp = null;
     chat = [];
@@ -2272,6 +2314,7 @@ function init() {
   for (const r of $('setup-form').elements.mode) r.addEventListener('change', updateSetupMode);
   $('chat-form').addEventListener('submit', sendChat);
   $('room-share').addEventListener('click', shareRoomCode);
+  $('matching-cancel').addEventListener('click', openSetup);
   $('phase-current').addEventListener('click', openPhaseMenu);
   $('opp-pile-graveyard').addEventListener('click', () => openOppViewer('graveyard'));
 
