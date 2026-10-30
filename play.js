@@ -346,8 +346,9 @@ function undo() {
   render();
 }
 
-function log(text) {
-  game.log.push({ turn: game.turn, text, ts: Date.now() });
+// pub：相手に見せる文（null なら相手には見せない）。省略すると text をそのまま見せる
+function log(text, pub) {
+  game.log.push({ turn: game.turn, text, ts: Date.now(), ...(pub !== undefined ? { pub } : {}) });
 }
 
 const zoneOf = (iid) => Object.keys(game.zones).find((z) => game.zones[z].includes(iid));
@@ -759,15 +760,30 @@ function chargeMana(iid) {
 
 // ---------- シールド・S・トリガー ----------
 
-// シールドを手札に加える（S・トリガーがあれば使うか選ぶ）
+// シールドを手札に加える。S・トリガーがあるかどうかを相手に悟られないよう、
+// どのカードでも確認の画面を出す（S・トリガーなら使うか選び、なければ確認するだけ）
 function breakShield(iid) {
   if (zoneOf(iid) !== 'shields') return;
   const c = game.cards[iid];
   moveCard(iid, 'hand', { silent: true });
   // フ・レイル・ギガボルバがいると、その文明の S・トリガーは使えない
   const blocked = c.ab.sTrigger && triggerBlocked(c);
-  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? (blocked ? '（S・トリガーは使えない）' : '（S・トリガー）') : ''}`);
-  if (c.ab.sTrigger && !blocked) game.triggers.push(iid);
+  // 相手のログにはカード名を出さない
+  log(`シールドをブレイク：${c.name}を手札へ${c.ab.sTrigger ? (blocked ? '（S・トリガーは使えない）' : '（S・トリガー）') : ''}`, 'シールドをブレイク：手札へ');
+  game.triggers.push(iid);
+  if (!c.ab.sTrigger || blocked) game.plainBreaks = [...(game.plainBreaks ?? []), iid];
+}
+
+// S・トリガーとして使えるか（使えないブレイクしたカードは確認するだけ）
+const isTrigger = (iid) => !(game.plainBreaks ?? []).includes(iid);
+
+// S・トリガーではないブレイクしたカードを確認した
+function confirmShield(iid) {
+  act(() => {
+    game.triggers = game.triggers.filter((x) => x !== iid);
+    game.plainBreaks = (game.plainBreaks ?? []).filter((x) => x !== iid);
+  });
+  finishTriggers();
 }
 
 function breakShields(n) {
@@ -801,7 +817,7 @@ async function useTrigger(iid) {
 function skipTrigger(iid) {
   act(() => {
     game.triggers = game.triggers.filter((x) => x !== iid);
-    log(`${game.cards[iid].name}のS・トリガーを使わない`);
+    log(`${game.cards[iid].name}のS・トリガーを使わない`, null);
   });
   finishTriggers();
 }
@@ -1402,7 +1418,33 @@ function updateBgm() {
   Bgm.play(started() && !$('setup').open ? 'battle' : 'ready');
 }
 
+// ---------- 召喚の演出 ----------
+// バトルゾーンに新しく出たカードを少しのあいだ光らせる。描き直しても途中から続けるよう、出た時刻を覚えておく
+const SUMMON_MS = 700;
+const summonFx = { me: { seen: null, at: new Map() }, opp: { seen: null, at: new Map() } };
+
+// 前に描いたときになかったカードを「出た」とする（最初に描くときは、すでにあったものとして扱う）
+function trackSummons(side, iids) {
+  const s = summonFx[side];
+  const now = Date.now();
+  if (!iids) {
+    s.seen = null;
+    return;
+  }
+  if (s.seen) for (const iid of iids) if (!s.seen.has(iid)) s.at.set(iid, now);
+  s.seen = new Set(iids);
+  for (const [iid, t] of s.at) if (now - t > SUMMON_MS || !s.seen.has(iid)) s.at.delete(iid);
+}
+
+function markSummon(el, side, iid) {
+  const t = summonFx[side].at.get(iid);
+  if (t == null) return;
+  el.classList.add('summoned');
+  el.style.setProperty('--summon-delay', `${t - Date.now()}ms`);
+}
+
 function renderBattlefield() {
+  trackSummons('me', game.zones.battlefield);
   fillZone('bf-main', game.zones.battlefield, 'battlefield');
   fillZone('bf-shields', game.zones.shields, 'shields');
   fillZone('bf-mana', game.zones.mana, 'mana');
@@ -1487,11 +1529,22 @@ function renderBanner() {
     const rest = pendingTriggers() - 1;
     bar.classList.add('trigger');
     const choices = Object.assign(document.createElement('div'), { className: 'choices' });
+    const more = rest ? `（ほかに${rest}枚）` : '';
+    if (!isTrigger(trigger)) {
+      choices.append(button('確認', () => confirmShield(trigger), true));
+      bar.replaceChildren(
+        span('SHIELD BREAK', 'trigger-title'),
+        DM.cardFace(c),
+        span(`${c.name}を手札に加えました${more}`, 'banner-title'),
+        choices,
+      );
+      return;
+    }
     choices.append(button('使う', () => useTrigger(trigger), true), button('使わない', () => skipTrigger(trigger)));
     bar.replaceChildren(
       span('SHIELD TRIGGER', 'trigger-title'),
       DM.cardFace(c),
-      span(`${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？${rest ? `（ほかに${rest}枚）` : ''}`, 'banner-title'),
+      span(`${c.name}（${c.isSpell ? '呪文' : c.type}）を使いますか？${more}`, 'banner-title'),
       choices,
     );
     return;
@@ -1600,6 +1653,7 @@ function cardEl(iid, zone) {
   }
   if (zone === 'battlefield') {
     addBadges(el, c);
+    markSummon(el, 'me', iid);
     if (myTurn() && isSick(c)) el.classList.add('sick');
     if (canAttackNow(c)) el.classList.add('can-attack');
   }
@@ -1758,7 +1812,12 @@ function renderOpp() {
   $('opp-shield-count').textContent = st ? st.shields : '–';
   const count = (z) => (Array.isArray(st[z]) ? st[z].length : st[z]);
   for (const z of ['library', 'hand', 'graveyard']) $(`opp-${z}-count`).textContent = st ? count(z) : '–';
-  $('opp-main').replaceChildren(...(st?.battlefield ?? []).map(oppCardEl));
+  trackSummons('opp', st ? st.battlefield.map((c) => c.iid) : null);
+  $('opp-main').replaceChildren(...(st?.battlefield ?? []).map((c) => {
+    const el = oppCardEl(c);
+    markSummon(el, 'opp', c.iid);
+    return el;
+  }));
   // 相手が処理中の呪文
   $('opp-resolving').hidden = !st?.resolving?.length;
   $('opp-resolving').replaceChildren(...(st?.resolving ?? []).map(oppCardEl));
@@ -1816,7 +1875,8 @@ function snapshot() {
     mana: game.zones.mana.map(pub),
     graveyard: game.zones.graveyard.map(pub),
     resolving: resolving().map(pub),
-    log: game.log.slice(-150),
+    // 相手に見せない記録は除き、相手向けの文があれば差し替える
+    log: game.log.slice(-150).filter((e) => e.pub !== null).map(({ pub, ...e }) => (pub ? { ...e, text: pub } : e)),
     result: game.result ?? null,
   };
 }
@@ -1916,9 +1976,11 @@ function setupNet() {
   Net.on('peek', receivePeek);
   Net.on('peekReply', receivePeekReply);
   Net.on('chat', (msg) => {
-    chat.push({ ts: Date.now(), who: 'opp', name: oppName(), text: String(msg.text).slice(0, 300) });
+    const text = String(msg.text).slice(0, 300);
+    chat.push({ ts: Date.now(), who: 'opp', name: oppName(), text });
     saveJson(sessionStorage, CHAT_KEY, chat.slice(-200));
     renderLog();
+    floatChat('opp', oppName(), text);
   });
 }
 
@@ -1947,6 +2009,31 @@ function sendChat(e) {
   Net.send({ type: 'chat', text });
   $('chat-input').value = '';
   renderLog();
+  floatChat('me', myName(), text);
+}
+
+// チャットはログに残すほか、フィールドの上を右から左へ流す（重ならないよう段を順に使う）
+const CHAT_LANES = 4;
+let chatLane = 0;
+function floatChat(who, name, text) {
+  const board = document.querySelector('.board');
+  if (!board) return;
+  const el = document.createElement('div');
+  el.className = `chat-float ${who}`;
+  el.append(Object.assign(document.createElement('span'), { className: 'who', textContent: `${name}：` }), text);
+  el.style.top = `${12 + (chatLane++ % CHAT_LANES) * 12}%`;
+  board.append(el);
+  // 動きを減らす設定のときは流さず、少し表示して消す
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.style.left = '12px';
+    setTimeout(() => el.remove(), 4000);
+    return;
+  }
+  const dist = board.clientWidth + el.offsetWidth;
+  el.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${-dist}px)` }], {
+    duration: Math.min(9000, 4000 + dist * 4),
+    easing: 'linear',
+  }).finished.then(() => el.remove(), () => el.remove());
 }
 
 // ---------- メニュー ----------
@@ -2166,7 +2253,8 @@ function init() {
   });
 
   // ゲームがないまま開始画面を閉じると操作できない画面が残るので、閉じさせない
-  $('setup').addEventListener('cancel', (e) => { if (!game) e.preventDefault(); });
+  // ゲームが終わったあとも、対戦準備画面から次のゲームを始める
+  $('setup').addEventListener('cancel', (e) => { if (!game || currentResult()) e.preventDefault(); });
   $('setup').addEventListener('close', () => {
     if (!game) $('setup').showModal();
     // 開始画面を閉じてゲームに戻ったら、対戦中の曲に戻す
@@ -2178,11 +2266,9 @@ function init() {
   $('setup-settings').addEventListener('click', Settings.open);
   window.addEventListener('settingschange', onSettingsChange);
   renderAvatars();
-  $('result-close').addEventListener('click', () => $('result').close());
-  $('result-again').addEventListener('click', () => {
-    $('result').close();
-    openSetup();
-  });
+  // 勝敗の画面を閉じたら、毎回対戦準備画面に戻る
+  $('result-again').addEventListener('click', () => $('result').close());
+  $('result').addEventListener('close', () => { if (currentResult() && !$('setup').open) openSetup(); });
   for (const r of $('setup-form').elements.mode) r.addEventListener('change', updateSetupMode);
   $('chat-form').addEventListener('submit', sendChat);
   $('room-share').addEventListener('click', shareRoomCode);

@@ -708,3 +708,15 @@ html.phone .deck-tile { padding: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .title-rays, .title-grid, .title-card, .title-logo, .title-start, .title-start::after, .title-hint { animation: none !important; }
 }
+/* ---------- 召喚の演出（play.js の markSummon）：上から降りて光の輪が広がる ---------- */
+.card.summoned .dm-face { animation: summon-card .7s cubic-bezier(.2, .9, .3, 1.2) var(--summon-delay, 0ms) both; }
+.card.summoned::before { content: ''; position: absolute; inset: -6px; border-radius: 10px; border: 3px solid var(--lime); box-shadow: 0 0 18px var(--lime); pointer-events: none;
+  animation: summon-ring .7s ease-out var(--summon-delay, 0ms) both; }
+@keyframes summon-card { 0% { opacity: 0; transform: translateY(-40%) scale(1.35); filter: brightness(2.2); } 55% { opacity: 1; transform: translateY(0) scale(.96); filter: brightness(1.6); } 100% { transform: none; filter: none; } }
+@keyframes summon-ring { 0%, 40% { opacity: 0; transform: scale(.9); } 55% { opacity: 1; } 100% { opacity: 0; transform: scale(1.35); } }
+
+/* ---------- チャットをフィールドに流す（play.js の floatChat） ---------- */
+.chat-float { position: absolute; left: 100%; z-index: 30; padding: 3px 12px; font-weight: 800; font-size: clamp(13px, 2.2vw, 18px); color: #fff; white-space: nowrap;
+  background: rgba(4, 10, 30, .55); border-radius: 999px; text-shadow: 0 1px 3px #000; pointer-events: none; }
+.chat-float .who { color: var(--cyan); font-size: .8em; }
+.chat-float.opp .who { color: #ffb4a8; }
