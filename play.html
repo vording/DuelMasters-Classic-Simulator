@@ -100,12 +100,6 @@
         <!-- 相手（ネット対戦のときだけ表示）：奥からマナ・シールド・バトルゾーン -->
         <div id="opp-area" class="opp-area" hidden>
           <div id="opp-status" class="opp-status"></div>
-          <div id="room-banner" class="room-banner" hidden>
-            <span class="room-label">部屋コード</span>
-            <strong id="room-code-big" class="room-code-big"></strong>
-            <span class="room-note">このコードを相手に伝えてください</span>
-            <button type="button" id="room-share">共有・コピー</button>
-          </div>
           <div class="battlefield opp">
             <div id="opp-mana" class="bf-row mana-row" data-label="MANA"></div>
             <div id="opp-shields" class="bf-row shield-row" data-label="SHIELD"></div>
@@ -162,6 +156,25 @@
 
   </div>
 
+  <!-- ネット対戦：マッチングするまでの画面 -->
+  <div id="matching" class="matching" hidden>
+    <div class="matching-radar" aria-hidden="true"><span></span><span></span><span></span></div>
+    <h2 class="matching-title"><b>MATCHING</b><small id="matching-sub"></small></h2>
+    <div class="matching-vs">
+      <div class="matching-player"><span class="avatar" id="matching-my-avatar"></span><span class="name" id="matching-my-name"></span></div>
+      <b class="matching-vs-mark">VS</b>
+      <div class="matching-player opp" id="matching-opp"><span class="avatar" id="matching-opp-avatar"></span><span class="name" id="matching-opp-name"></span></div>
+    </div>
+    <div id="room-banner" class="matching-code">
+      <span class="room-label">部屋コード</span>
+      <strong id="room-code-big" class="room-code-big"></strong>
+      <span class="room-note" id="room-note"></span>
+      <button type="button" id="room-share">共有・コピー</button>
+    </div>
+    <p id="matching-status" class="matching-status"></p>
+    <button type="button" id="matching-cancel">やめる（開始画面へ）</button>
+  </div>
+
   <dialog id="setup" class="setup">
     <h2 class="panel-head"><b>GAME START</b><small>ゲームの開始</small></h2>
     <form method="dialog" id="setup-form" class="dialog-body">
@@ -171,7 +184,7 @@
         <label><input type="radio" name="mode" value="solo" checked> 一人回し</label>
         <label><input type="radio" name="mode" value="host"> ネット対戦：部屋を作る</label>
         <label><input type="radio" name="mode" value="join"> ネット対戦：部屋に入る
-          <input id="room-code" name="room" type="text" placeholder="部屋コード" maxlength="12" class="room-code"></label>
+          <input id="room-code" name="room" type="text" inputmode="numeric" autocomplete="off" placeholder="6桁の数字" maxlength="6" class="room-code"></label>
       </fieldset>
       <fieldset class="order well">
         <legend><b>PLAYER</b><small>プレイヤー</small></legend>

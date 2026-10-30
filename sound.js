@@ -103,7 +103,8 @@ const Sound = (() => {
 
 // BGM（bgm/<名前>.mp3 をくり返し流す）
 // select：デッキ選択、edit：デッキ編集、ready：対戦の準備（開始画面・相手待ち）、battle：対戦中
-// ・Web Audio で流し、曲の頭と終わりの無音を除いた区間をすき間なくループする
+// ・Web Audio で流し、曲の頭と終わりの無音を除いた区間をループする。曲の終わりのフェードアウトが
+//   「曲が終わった」と聞こえないよう、終わりの数秒を次の周の頭と重ねてクロスフェードする
 //   （ファイルを読めない場合＝index.html を直接開いたときなどは、ふつうの <audio> のループ）
 // ・曲を変えるときは、今の曲をフェードアウトしながら次の曲をフェードインする
 // ・オン・オフと音量はこのブラウザに記憶する。ブラウザが自動再生を止めたら、画面に最初に触れたときに流す
@@ -115,6 +116,10 @@ const Bgm = (() => {
   const FADE_IN = 600;
   // これより小さい音は無音とみなす（曲の頭と終わりを削る）
   const SILENCE = 0.003;
+  // 曲の終わりは、これより小さくなったところで切る（フェードアウトの消えかけを流さない）
+  const TAIL = 0.02;
+  // ループのつなぎ目で重ねる秒数
+  const XFADE = 3;
   // 曲の頭を削る秒数（ループしても、この部分は流さない）
   const SKIP = { ready: 1 };
   let on = true;
@@ -151,25 +156,58 @@ const Bgm = (() => {
     const loud = (i) => chans.some((d) => Math.abs(d[i]) > SILENCE);
     let s = Math.min(buffer.length - 1, Math.round(skip * buffer.sampleRate));
     while (s < buffer.length && !loud(s)) s++;
-    let e = buffer.length - 1;
-    while (e > s && !loud(e)) e--;
-    if (e <= s) return { buffer, start: skip, end: buffer.duration };
-    return { buffer, start: s / buffer.sampleRate, end: (e + 1) / buffer.sampleRate };
+    // 終わり：0.05秒ごとの音の大きさ（RMS）が TAIL を超える最後の位置
+    const win = Math.round(buffer.sampleRate * 0.05);
+    const rms = (from) => {
+      let sum = 0;
+      for (const d of chans) for (let i = from; i < from + win; i++) sum += d[i] * d[i];
+      return Math.sqrt(sum / (win * chans.length));
+    };
+    let e = buffer.length - win;
+    while (e > s && rms(e) < TAIL) e -= win;
+    e += win;
+    if (e - s < buffer.sampleRate * XFADE * 3) return { buffer, start: skip, end: buffer.duration };
+    return { buffer, start: s / buffer.sampleRate, end: Math.min(buffer.length, e) / buffer.sampleRate };
   }
 
-  // Web Audio：無音を除いた区間をすき間なくループ
+  // Web Audio：無音を除いた区間をくり返す。1周ごとに新しく流し、前の周の終わり XFADE 秒と重ねてつなぐ
   function webPlayer(name, { buffer, start, end }) {
     const c = getCtx();
     const gain = c.createGain();
     gain.gain.value = 0;
     gain.connect(c.destination);
-    const src = c.createBufferSource();
-    src.buffer = buffer;
-    src.loop = true;
-    src.loopStart = start;
-    src.loopEnd = end;
-    src.connect(gain);
-    src.start(0, start);
+    const len = end - start;
+    const sources = new Set();
+    let timer = null;
+    // at：流し始める時刻。first：最初の周は頭からそのまま（フェードインはしない）
+    function loop(at, first) {
+      const src = c.createBufferSource();
+      const g = c.createGain();
+      src.buffer = buffer;
+      src.connect(g);
+      g.connect(gain);
+      if (!first) {
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(1, at + XFADE);
+      }
+      g.gain.setValueAtTime(1, at + len - XFADE);
+      g.gain.linearRampToValueAtTime(0, at + len);
+      src.start(at, start, len);
+      sources.add(src);
+      src.onended = () => {
+        sources.delete(src);
+        g.disconnect();
+      };
+      // 次の周は、この周が終わる XFADE 秒前から。少し前に予約しておく
+      // （止めている間＝タブが裏にある間は時計が進まないので、予約せずに待つ）
+      const next = at + len - XFADE;
+      const tick = () => {
+        if (c.state !== 'running' || next - c.currentTime > 1.5) timer = setTimeout(tick, 1000);
+        else loop(next, false);
+      };
+      timer = setTimeout(tick, Math.max(0, (next - c.currentTime - 1) * 1000));
+    }
+    loop(c.currentTime + 0.05, true);
     return {
       name,
       ramp(to, ms) {
@@ -180,8 +218,9 @@ const Bgm = (() => {
       },
       stop(ms) {
         this.ramp(0, ms);
+        clearTimeout(timer);
         setTimeout(() => {
-          try { src.stop(); } catch {}
+          for (const src of sources) try { src.stop(); } catch {}
           gain.disconnect();
           // 止めた曲は、メモリを空けるため読み直すことにする（また流すときに読み込む）
           if (current?.name !== name) buffers.delete(name);
