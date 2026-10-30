@@ -397,6 +397,9 @@ function moveCard(iid, to, { bottom = false, silent = false, destroy = false } =
   // マナゾーンへは多色カードはタップして置く。それ以外の場所ではアンタップに戻す
   card.tapped = to === 'mana' && card.civs.length > 1;
   if (to === 'battlefield' && from !== 'battlefield') card.enteredTurn = game.turn;
+  // 効果でシールドに加えた（仕込んだ）カード：自分の画面だけ、どのシールドかわかるようにする
+  if (to === 'shields') card.planted = true;
+  else delete card.planted;
   // 進化クリーチャーがバトルゾーンを離れたら、進化元も同じ場所へ
   const under = from === 'battlefield' && to !== 'battlefield' ? card.under ?? [] : [];
   card.under = to === 'battlefield' ? card.under ?? [] : [];
@@ -1067,17 +1070,6 @@ function pickShield(index) {
   }
 }
 
-// おまかせ：右（新しく置かれたもの）から順に選ぶ
-function pickShieldsAuto() {
-  const p = game.attack?.pick;
-  if (!p) return;
-  const total = opp?.state?.shields ?? 0;
-  const picked = [...p.picked];
-  for (let i = total - 1; i >= 0 && picked.length < p.n; i--) if (!picked.includes(i)) picked.push(i);
-  game.attack = { ...game.attack, pick: { ...p, picked } };
-  sendBreak();
-}
-
 function sendBreak() {
   const a = game.attack;
   if (!a?.pick) return;
@@ -1600,7 +1592,6 @@ function renderBanner() {
     const { n, picked } = game.attack.pick;
     bar.replaceChildren(
       span(`割るシールドを相手のシールドから${n}枚選んでください（あと${n - picked.length}枚）`, 'banner-title'),
-      button('おまかせ', pickShieldsAuto),
     );
     return;
   }
@@ -1666,6 +1657,13 @@ function cardEl(iid, zone) {
     el.append(Object.assign(document.createElement('div'), { className: 'dm-back' }));
     el.title = 'シールド';
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+    // 仕込んだシールドは印とカード名を出し、長押しで中身を見られる（自分の画面だけ。相手には枚数しか送らない）
+    if (c.planted) {
+      el.classList.add('planted');
+      el.title = `シールド（仕込んだカード：${c.name}）`;
+      el.append(Object.assign(document.createElement('span'), { className: 'planted-name', textContent: c.name }));
+      onPeek(el, () => detailOf(c));
+    }
     return el;
   }
 

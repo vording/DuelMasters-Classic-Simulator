@@ -16,16 +16,10 @@
 <body>
   <!-- スタート画面（開いたとき最初に出す。真ん中の START でデッキ選択へ。app.js の showTitle / startFromTitle） -->
   <div class="title-screen" id="title-screen" hidden>
-    <div class="title-rays" aria-hidden="true"></div>
-    <div class="title-grid" aria-hidden="true"></div>
-    <div class="title-cards" id="title-cards" aria-hidden="true"></div>
-    <div class="title-center">
+    <!-- 真っ暗な画面にロゴだけ。ロゴを押すとスタート -->
+    <button type="button" id="title-start" class="title-start" aria-label="スタート">
       <img class="title-logo" src="img/logo.png" alt="デュエル・マスターズ">
-      <div class="title-sub"><b>CLASSIC</b><span>基本編</span></div>
-      <button type="button" id="title-start" class="title-start"><b>START</b><small>スタート</small></button>
-      <p class="title-hint" aria-hidden="true">PRESS START</p>
-    </div>
-    <p class="title-foot">非公式のファンツールです</p>
+    </button>
   </div>
   <script>
     // 一度スタートした（このタブで）・デッキを開くリンクで来たときは、スタート画面を出さない

@@ -143,29 +143,15 @@ function renderHome() {
 
 const TITLE_KEY = 'dm-deckmaker-title-seen';
 
-// 背景に流れるカード（画像のあるカードからランダムに）
+// 真っ暗な画面に、ふわふわ浮かんで点滅するロゴだけ
 function showTitle() {
   const screen = $('title-screen');
   screen.classList.remove('launch');
   screen.hidden = false;
-  const pool = allCards().filter((c) => c.image);
-  const cards = Array.from({ length: phone() ? 9 : 16 }, () => pool[Math.floor(Math.random() * pool.length)]);
-  $('title-cards').replaceChildren(...cards.map((card, i) => {
-    const el = document.createElement('div');
-    el.className = 'title-card';
-    el.style.left = `${(i / cards.length) * 100 + Math.random() * 4 - 2}%`;
-    el.style.setProperty('--dur', `${14 + Math.random() * 10}s`);
-    el.style.setProperty('--delay', `${-Math.random() * 20}s`);
-    el.style.setProperty('--rot', `${Math.random() * 40 - 20}deg`);
-    el.style.setProperty('--scale', String(0.7 + Math.random() * 0.6));
-    // 画面の外から昇ってくるので、遅延読み込みにしない（しないと画像が出ないまま流れる）
-    el.append(DM.cardFace(card));
-    return el;
-  }));
   $('title-start').focus({ preventScroll: true });
 }
 
-// START：ボタンがはじけて、光の輪と火花が広がり、ロゴが手前に飛んできて、ワイプでデッキ選択へ
+// ロゴを押す：光の輪と火花が広がり、ロゴが手前に飛んできて、ワイプでデッキ選択へ
 let starting = false;
 async function startFromTitle() {
   if (starting) return;
@@ -173,7 +159,6 @@ async function startFromTitle() {
   const screen = $('title-screen');
   try { sessionStorage.setItem(TITLE_KEY, '1'); } catch {}
   Sound.play('evolve');
-  const center = screen.querySelector('.title-center');
   // 光の輪（3つ）と火花（放射状に飛ぶ）
   const burst = document.createElement('div');
   burst.className = 'title-burst';
@@ -188,11 +173,8 @@ async function startFromTitle() {
     spark.style.setProperty('--delay', `${Math.random() * 0.12}s`);
     burst.append(spark);
   }
-  // START ボタンの真ん中から広げる
-  const btn = $('title-start');
-  burst.style.left = `${btn.offsetLeft + btn.offsetWidth / 2}px`;
-  burst.style.top = `${btn.offsetTop + btn.offsetHeight / 2}px`;
-  center.append(burst);
+  // ロゴの真ん中から広げる
+  screen.append(burst);
   screen.classList.add('launch');
   await new Promise((resolve) => setTimeout(resolve, 1100));
   await Wipe.cover();
@@ -699,7 +681,7 @@ function init() {
     if (!location.hash.startsWith('#deck=')) changeView();
   });
 
-  // スタート画面：START（Enter・スペースでも）。上のロゴを押すとスタート画面に戻る
+  // スタート画面：ロゴを押すとスタート（Enter・スペースでも）。上のロゴを押すとスタート画面に戻る
   $('title-start').addEventListener('click', startFromTitle);
   document.querySelector('.topbar .logo').addEventListener('click', () => Wipe.run(showTitle));
   document.querySelector('.topbar .logo').style.cursor = 'pointer';
