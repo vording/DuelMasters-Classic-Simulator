@@ -125,9 +125,10 @@
 | battle | ネット対戦（3曲から対戦ごとにランダム） | Hybrid Landscape |
 | battle-cyber-girl | 〃 | Cyber girl |
 | battle-all-is-vanity | 〃 | All is vanity |
-| battle-watering | 一人回し専用 | WATERING |
+| battle-watering | 一人回し（2曲からゲームごとにランダム） | WATERING |
+| solo-re-roots | 〃 | RE-ROOTS |
 
-対戦中の曲は、ネット対戦は1回の対戦ごとに3曲からランダムで選び（一人回しは WATERING）、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
+対戦中の曲は、ネット対戦は1回の対戦ごとに3曲からランダムで選び（一人回しは WATERING・RE-ROOTS からランダム）、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
 
 ※ 曲はユーザーが用意したファイルです。公開する場合は、曲の利用条件を確認してください。
 

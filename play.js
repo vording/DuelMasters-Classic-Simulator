@@ -246,7 +246,7 @@ function newGame(deck, onDraw, random = false) {
     matchId: online() && Net.role === 'host' ? Math.random().toString(36).slice(2) : null,
     prevMatchId,
     // 対戦中の BGM：対戦ごとにランダムで1曲（曲名は始まってから少しのあいだ表示する）
-    bgm: Math.floor(Math.random() * BATTLE_BGM.length),
+    bgm: Math.floor(Math.random() * bgmList().length),
     bgmShown: false,
   };
   if (online() && Net.role === 'guest' && isNewHostGame(pendingHost)) adoptHostOrder(pendingHost);
@@ -1412,14 +1412,18 @@ function render() {
 }
 
 // 対戦の準備中（開始画面・相手の参加や1ターン目を待っている間）は ready、ゲームが始まったら battle
-// 対戦中の曲（bgm/<file>.mp3）。ネット対戦は対戦ごとにランダムで選び、一人回しは専用の曲
+// 対戦中の曲（bgm/<file>.mp3）。ネット対戦・一人回しそれぞれの曲から、1回のゲームごとにランダムで選ぶ
 const BATTLE_BGM = [
   { file: 'battle', title: 'Hybrid Landscape' },
   { file: 'battle-cyber-girl', title: 'Cyber girl' },
   { file: 'battle-all-is-vanity', title: 'All is vanity' },
 ];
-const SOLO_BGM = { file: 'battle-watering', title: 'WATERING' };
-const battleBgm = () => (SOLO_PAGE ? SOLO_BGM : BATTLE_BGM[game?.bgm] ?? BATTLE_BGM[0]);
+const SOLO_BGM = [
+  { file: 'battle-watering', title: 'WATERING' },
+  { file: 'solo-re-roots', title: 'RE-ROOTS' },
+];
+const bgmList = () => (SOLO_PAGE ? SOLO_BGM : BATTLE_BGM);
+const battleBgm = () => bgmList()[game?.bgm] ?? bgmList()[0];
 
 function updateBgm() {
   const battle = started() && !$('setup').open;
