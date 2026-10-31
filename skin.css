@@ -785,8 +785,11 @@ html.phone .fx-cards .card.shield.planted::before { content: "仕込"; padding: 
 .fx-civ.civ-mark-nature { right: 18vw; bottom: 30vh; width: 30vmin; height: 12vmin; --d: 28s; }
 @keyframes civ-drift { from { translate: 0 0; } to { translate: 3vmin -4vmin; } }
 
-/* 上部の流れる帯：区切りの記号を文明のアイコンに */
+/* 上部の流れる帯（更新情報。news.js）：区切りの記号を文明のアイコンに */
 .ticker .tk { display: inline-block; width: 1.5em; height: 11px; margin: 0 .5em; vertical-align: -1px; background: #0a1838; }
+/* 更新情報の日付 */
+.ticker .tk-date { font: 400 11px/16px var(--font-en); letter-spacing: .08em; color: #1f4fd0; }
+.ticker span { font-family: var(--font-ui); font-weight: 800; letter-spacing: .08em; }
 
 /* パネル：右下に文明の透かし（パネルごとに順番に替える） */
 .panel { position: relative; isolation: isolate; }
