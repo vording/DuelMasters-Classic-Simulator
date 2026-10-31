@@ -176,7 +176,6 @@ const Settings = (() => {
               <legend><b>BGM</b></legend>
               <div id="gallery-bgm" class="gallery-bgm"></div>
             </fieldset>
-            <p id="gallery-note" class="note"></p>
           </div>
         </section>
       </div>`;
@@ -277,7 +276,6 @@ const Settings = (() => {
 
   function renderGallery() {
     for (const b of document.querySelectorAll('.gallery-track')) b.setAttribute('aria-pressed', String(b.dataset.track === Bgm.track));
-    $('gallery-note').textContent = Bgm.on ? '' : 'BGM はオフになっています（サウンドでオンにすると聞けます）';
   }
 
   // ほかの画面：上のバーに歯車（設定画面へのリンク）を置く。戻ったら来た画面に戻れるよう、今の画面を渡す
