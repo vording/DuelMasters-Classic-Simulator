@@ -22,32 +22,34 @@
   window.alert = () => {};
 
   // ---------- 効果の選択（effects.js の fxChoose を置き換える） ----------
-  // はい／いいえ：だいたい「はい」（弱いは半々）。カードを選ぶ：相手のカードは強いものから、自分のカードは文面で決める
-  const GOOD_FOR_ME = /手札に加え|バトルゾーンに出|マナゾーンに置|引|山札の上/;
-  const BAD_FOR_ME = /捨て|墓地に置|破壊|手札に戻|シールド.*手札/;
+  // はい／いいえ：だいたい「はい」（弱いは半々）。
+  // カードを選ぶ：選んだカードがどこからどこへ動くか（題の「（手札へ）」など）で、自分の得になるカードだけを選ぶ。
+  //   相手のカード → 強いものから。自分のバトルゾーンのクリーチャーを手札・墓地などへ動かすのは損なので、選ばない
+  //   （アクア・サーファーで自分自身を手札に戻さないように）。足りないとき（必ず選ぶとき）だけ、弱いものから選ぶ
+  const DEST = Object.fromEntries(Object.entries(FX_TO).map(([k, v]) => [v, k]));
+  function isGood(it, dest) {
+    if (it.side === 'opp') return true;
+    const from = zoneOf(it.iid);
+    if (from === 'battlefield') return dest == null; // 選ぶだけ（パワーを上げるなど）は得、動かすのは損
+    if (from === 'hand') return dest === 'battlefield';
+    if (from === 'library' || from === 'graveyard') return dest === 'hand' || dest === 'battlefield' || dest === 'mana';
+    if (from === 'mana') return dest === 'hand' || dest === 'battlefield';
+    if (from === 'shields') return dest === 'hand';
+    return dest == null;
+  }
   fxChoose = function ({ title = '', items = [], min = 0, max = 0, buttons = null }) {
     return new Promise((resolve) => setTimeout(() => {
       if (buttons) return resolve(LEVEL === 1 && buttons.length > 1 && chance(0.4) ? 1 : 0);
       if (!items.length || max === 0) return resolve([]);
-      const opps = items.filter((it) => it.side === 'opp');
-      const mine = items.filter((it) => it.side !== 'opp');
+      const dest = DEST[title.match(/（([^（）]+)）\s*$/)?.[1]] ?? null;
       const value = (it) => power(it.card) / 1000 + cost(it.card);
-      let picked;
-      if (LEVEL === 1) {
-        picked = [...items].sort(() => Math.random() - 0.5).slice(0, Math.max(min, Math.min(max, 1 + Math.floor(Math.random() * max))));
-      } else if (opps.length && (!mine.length || !BAD_FOR_ME.test(title) || opps.length >= max)) {
-        // 相手のカードを選ぶ（破壊・手札に戻すなど）：強いものから
-        picked = [...opps].sort((a, b) => value(b) - value(a)).slice(0, max);
-        if (picked.length < min) picked.push(...mine.sort((a, b) => value(a) - value(b)).slice(0, min - picked.length));
-      } else if (BAD_FOR_ME.test(title) && !GOOD_FOR_ME.test(title)) {
-        // 自分のカードを失う：できるだけ少なく、弱いものから
-        picked = [...mine].sort((a, b) => value(a) - value(b)).slice(0, min || (LEVEL === 3 ? 0 : 1));
-        if (!picked.length && min) picked = mine.slice(0, min);
-      } else {
-        // 自分のためになる（手札に加える・出す など）：できるだけ多く、強いものから
-        picked = [...items].sort((a, b) => value(b) - value(a)).slice(0, max);
-      }
-      resolve(picked.slice(0, Math.max(min, Math.min(max, picked.length))));
+      const good = items.filter((it) => isGood(it, dest));
+      const bad = items.filter((it) => !isGood(it, dest)).sort((a, b) => value(a) - value(b));
+      // 得になるカード：弱いはでたらめに、普通以上は強いものから
+      const order = LEVEL === 1 ? [...good].sort(() => Math.random() - 0.5) : [...good].sort((a, b) => value(b) - value(a));
+      const picked = order.slice(0, max);
+      if (picked.length < min) picked.push(...bad.slice(0, min - picked.length));
+      resolve(picked);
     }, STEP_MS / 2));
   };
 
