@@ -748,3 +748,72 @@ html.phone .fx-cards .card.shield.planted::before { content: "仕込"; padding: 
   background: radial-gradient(circle at 50% 38%, rgba(31, 107, 255, .35), transparent 60%), repeating-linear-gradient(0deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), #040a1e;
 }
 .fx-cards .card.fx-pick.planted.picked { outline-color: var(--lime); }
+
+/* ==========================================================
+   文明のアイコン（img/civ/*.svg）：背景の飾りとして使う（ボタンには使わない）
+   白い SVG を mask にして、色・透明度は CSS で付ける
+   ========================================================== */
+.civ-mark-light { --civ-img: url("img/civ/light.svg"); --civ-c: #f4e48a; }
+.civ-mark-water { --civ-img: url("img/civ/water.svg"); --civ-c: #5aa8ff; }
+.civ-mark-darkness { --civ-img: url("img/civ/darkness.svg"); --civ-c: #b48cd8; }
+.civ-mark-fire { --civ-img: url("img/civ/fire.svg"); --civ-c: #ff6a4d; }
+.civ-mark-nature { --civ-img: url("img/civ/nature.svg"); --civ-c: #6fd06a; }
+.fx-civ, .tk, .matching-civs i {
+  background: var(--civ-c);
+  -webkit-mask: var(--civ-img) center / contain no-repeat;
+  mask: var(--civ-img) center / contain no-repeat;
+}
+
+/* 画面全体の背景：5つの文明がゆっくり漂う */
+.fx-civ { opacity: .09; animation: civ-drift var(--d, 22s) ease-in-out infinite alternate; }
+.fx-civ.civ-mark-light { left: 4vw; top: 58vh; width: 26vmin; height: 26vmin; --d: 26s; }
+.fx-civ.civ-mark-water { left: 30vw; top: 8vh; width: 34vmin; height: 15vmin; --d: 30s; }
+.fx-civ.civ-mark-darkness { right: 6vw; top: 14vh; width: 40vmin; height: 16vmin; --d: 24s; }
+.fx-civ.civ-mark-fire { left: 46vw; bottom: 6vh; width: 22vmin; height: 22vmin; --d: 20s; animation-name: civ-drift, spin; animation-duration: 20s, 90s; animation-timing-function: ease-in-out, linear; animation-direction: alternate, normal; }
+.fx-civ.civ-mark-nature { right: 18vw; bottom: 30vh; width: 30vmin; height: 12vmin; --d: 28s; }
+@keyframes civ-drift { from { translate: 0 0; } to { translate: 3vmin -4vmin; } }
+
+/* 上部の流れる帯：区切りの記号を文明のアイコンに */
+.ticker .tk { display: inline-block; width: 1.5em; height: 11px; margin: 0 .5em; vertical-align: -1px; background: #0a1838; }
+
+/* パネル：右下に文明の透かし（パネルごとに順番に替える） */
+.panel { position: relative; isolation: isolate; }
+.panel::after { content: ''; position: absolute; right: -18px; bottom: -18px; z-index: -1; width: 150px; height: 150px; opacity: .07; pointer-events: none;
+  background: #fff; -webkit-mask: url("img/civ/light.svg") center / contain no-repeat; mask: url("img/civ/light.svg") center / contain no-repeat; }
+.panel:nth-of-type(5n + 2)::after { -webkit-mask-image: url("img/civ/water.svg"); mask-image: url("img/civ/water.svg"); height: 80px; width: 180px; }
+.panel:nth-of-type(5n + 3)::after { -webkit-mask-image: url("img/civ/darkness.svg"); mask-image: url("img/civ/darkness.svg"); height: 80px; width: 200px; }
+.panel:nth-of-type(5n + 4)::after { -webkit-mask-image: url("img/civ/fire.svg"); mask-image: url("img/civ/fire.svg"); }
+.panel:nth-of-type(5n + 5)::after { -webkit-mask-image: url("img/civ/nature.svg"); mask-image: url("img/civ/nature.svg"); height: 80px; width: 200px; }
+
+/* 戦場：5つの文明を横一列に並べた透かし */
+.board { isolation: isolate; }
+.board::before { content: ''; position: absolute; left: 6%; right: 6%; top: 50%; z-index: -1; height: 18%; transform: translateY(-50%); opacity: .06; pointer-events: none;
+  background: #fff; -webkit-mask: url("img/civ/band.svg") center / contain no-repeat; mask: url("img/civ/band.svg") center / contain no-repeat; }
+
+/* マッチング画面：5つの文明がレーダーのまわりを回る */
+.matching-civs { position: absolute; left: 50%; top: 38%; width: min(92vw, 560px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; animation: civ-orbit 40s linear infinite; }
+@keyframes civ-orbit { to { rotate: 360deg; } }
+.matching-civs i { position: absolute; left: 50%; top: 50%; width: 15%; height: 15%; margin: -7.5% 0 0 -7.5%; opacity: .5; }
+.matching-civs i:nth-child(1) { transform: rotate(0deg) translateY(-330%) rotate(0deg); }
+.matching-civs i:nth-child(2) { transform: rotate(72deg) translateY(-330%) rotate(-72deg); width: 20%; margin-left: -10%; }
+.matching-civs i:nth-child(3) { transform: rotate(144deg) translateY(-330%) rotate(-144deg); width: 22%; margin-left: -11%; }
+.matching-civs i:nth-child(4) { transform: rotate(216deg) translateY(-330%) rotate(-216deg); }
+.matching-civs i:nth-child(5) { transform: rotate(288deg) translateY(-330%) rotate(-288deg); width: 20%; margin-left: -10%; }
+
+/* 「ゲームの開始」画面の後ろにも、文明の帯を薄く */
+#setup::backdrop {
+  background: url("img/civ/band-faint.svg") center 88% / min(90vw, 900px) auto no-repeat, radial-gradient(circle at 50% 38%, rgba(31, 107, 255, .35), transparent 60%), repeating-linear-gradient(0deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), #040a1e;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-civ, .matching-civs { animation: none !important; }
+}
+
+/* 設定画面：開いたときは見出しにフォーカスする（枠は出さない） */
+dialog.settings .panel-head:focus { outline: none; }
+
+/* デッキリスト：キーカード（デッキ選択の表紙に出す） */
+.row .key-btn { width: 24px; padding: 0; color: var(--muted); background: none; border: 0; box-shadow: none; font-size: 15px; line-height: 20px; }
+.row .key-btn:hover:not(:disabled) { color: #ffd400; background: none; box-shadow: none; }
+.row.key { background: rgba(255, 212, 0, .12); }
+.row.key .key-btn { color: #ffd400; text-shadow: 0 0 6px rgba(255, 212, 0, .7); }
+html.phone .row .key-btn { width: 30px; font-size: 18px; }

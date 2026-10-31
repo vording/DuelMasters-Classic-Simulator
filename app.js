@@ -112,13 +112,27 @@ function changeView() {
   return changing;
 }
 
-// デッキ選択：デッキごとのタイル（表紙＝一番コストの大きいクリーチャー、名前、枚数、文明）
+// デッキの表紙：キーカード（デッキに入っているときだけ）。なければ一番コストの大きいクリーチャー
+function deckCover(d) {
+  const cards = deckEntries(d).map((e) => e.card);
+  return cards.find((c) => c.id === d.keyCard) ?? [...cards].sort((a, b) => DM.isCreatureType(b.type) - DM.isCreatureType(a.type) || b.cost - a.cost)[0];
+}
+
+// キーカードにする（同じカードをもう一度押すと解除）
+function toggleKeyCard(card) {
+  const d = activeDeck();
+  d.keyCard = d.keyCard === card.id ? undefined : card.id;
+  Sound.play('button');
+  update();
+}
+
+// デッキ選択：デッキごとのタイル（表紙＝キーカード、名前、枚数、文明）
 function renderHome() {
   $('home-count').textContent = `${state.decks.length}個`;
   $('home-decks').replaceChildren(...state.decks.map((d) => {
     const total = deckTotal(d);
     const cards = deckEntries(d).map((e) => e.card);
-    const cover = [...cards].sort((a, b) => DM.isCreatureType(b.type) - DM.isCreatureType(a.type) || b.cost - a.cost)[0];
+    const cover = deckCover(d);
     const civs = DM.CIVS.filter((c) => cards.some((card) => card.civs.includes(c.name)));
     const tile = document.createElement('div');
     tile.className = 'deck-tile';
@@ -551,8 +565,15 @@ function renderStats() {
 
 function renderRow({ card, qty }) {
   const row = document.createElement('div');
-  row.className = 'row';
-  row.innerHTML = '<span class="qty"></span><span class="civ-dots"></span><span class="cost"></span><span class="name"></span><button class="minus" aria-label="1枚減らす">−</button><button class="plus" aria-label="1枚追加">＋</button>';
+  const key = activeDeck().keyCard === card.id;
+  row.className = `row${key ? ' key' : ''}`;
+  row.innerHTML = '<button class="key-btn"></button><span class="qty"></span><span class="civ-dots"></span><span class="cost"></span><span class="name"></span><button class="minus" aria-label="1枚減らす">−</button><button class="plus" aria-label="1枚追加">＋</button>';
+  // キーカード：デッキ選択の表紙に出す
+  const keyBtn = row.querySelector('.key-btn');
+  keyBtn.textContent = key ? '★' : '☆';
+  keyBtn.title = key ? 'キーカード（押すと解除）' : 'キーカードにする（デッキ選択の表紙に出す）';
+  keyBtn.setAttribute('aria-pressed', String(key));
+  keyBtn.addEventListener('click', () => toggleKeyCard(card));
   row.querySelector('.qty').textContent = qty;
   row.querySelector('.cost').textContent = card.cost;
   row.querySelector('.name').textContent = card.name;

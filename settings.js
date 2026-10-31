@@ -121,7 +121,8 @@ const Settings = (() => {
         </fieldset>`
       : '';
     dialog.innerHTML = `
-      <h2 class="panel-head"><b>SETTINGS</b><small>設定</small></h2>
+      <!-- 開いたときは見出しにフォーカスする（名前の入力欄が自動で編集状態になり、スマホでキーボードが出ないように） -->
+      <h2 class="panel-head" tabindex="-1" autofocus><b>SETTINGS</b><small>設定</small></h2>
       <div class="dialog-body">
         <fieldset class="settings-group well">
           <legend><b>PLAYER</b><small>プレイヤー</small></legend>
