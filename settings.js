@@ -184,6 +184,11 @@ const Settings = (() => {
       if (location.hash === '#gallery') history.back();
       else Bgm.leave(backUrl());
     });
+    // タイトルに戻る：スタート画面を出すようにして、デッキ作成の画面（index.html）へ
+    $('settings-title').addEventListener('click', () => {
+      try { sessionStorage.removeItem('dm-deckmaker-title-seen'); } catch {}
+      Bgm.leave('index.html');
+    });
     // ギャラリーは別の画面（#gallery）。ブラウザの戻るでも設定に戻る
     $('open-gallery').addEventListener('click', () => { location.hash = 'gallery'; });
     window.addEventListener('hashchange', showView);
