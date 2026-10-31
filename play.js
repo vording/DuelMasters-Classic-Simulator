@@ -1415,6 +1415,7 @@ const BATTLE_BGM = [
   { file: 'battle', title: 'Hybrid Landscape' },
   { file: 'battle-cyber-girl', title: 'Cyber girl' },
   { file: 'battle-all-is-vanity', title: 'All is vanity' },
+  { file: 'battle-watering', title: 'WATERING' },
 ];
 const battleBgm = () => BATTLE_BGM[game?.bgm] ?? BATTLE_BGM[0];
 
