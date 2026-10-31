@@ -1459,6 +1459,7 @@ const BATTLE_BGM = [
   { file: 'battle', title: 'Hybrid Landscape' },
   { file: 'battle-cyber-girl', title: 'Cyber girl' },
   { file: 'battle-all-is-vanity', title: 'All is vanity' },
+  { file: 'battle-seraphic-takedown', title: 'SERAPHIC TAKEDOWN' },
 ];
 const SOLO_BGM = [
   { file: 'battle-watering', title: 'WATERING' },

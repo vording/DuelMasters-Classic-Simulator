@@ -124,12 +124,12 @@ const Bgm = (() => {
   const SKIP = { ready: 1 };
   // 曲の大きさをそろえる：曲ごとの音の大きさ（LUFS。ffmpeg の ebur128 で測った値）を、いちばん小さい曲（TARGET）に合わせて下げる
   // 曲を足したら、ffmpeg -i bgm/<名前>.mp3 -af ebur128 -f null - の Integrated loudness を書き足す（書いていない曲はそのまま）
-  const TARGET = -12;
   const LOUDNESS = {
     select: -9.7, edit: -10.1, ready: -9.0,
-    battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2,
+    battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2, 'battle-seraphic-takedown': -14.2,
     'battle-watering': -10.2, 'solo-re-roots': -10.2,
   };
+  const TARGET = Math.min(...Object.values(LOUDNESS));
   const trackGain = (name) => (name in LOUDNESS ? Math.min(1, 10 ** ((TARGET - LOUDNESS[name]) / 20)) : 1);
   let on = true;
   let volume = 0.35;
