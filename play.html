@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
-  <link rel="stylesheet" href="play.css?v=16">
-  <link rel="stylesheet" href="skin.css?v=44">
+  <link rel="stylesheet" href="play.css?v=17">
+  <link rel="stylesheet" href="skin.css?v=46">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
   <script src="felt.js?v=2"></script>
@@ -179,7 +179,12 @@
   </div>
 
   <dialog id="setup" class="setup">
-    <h2 class="panel-head"><b>GAME START</b><small>ゲームの開始</small></h2>
+    <!-- 画面の左上：デッキ作成に戻る -->
+    <a href="index.html" class="setup-back">◀ デッキ作成に戻る</a>
+    <!-- 開始画面は画面いっぱいの入れ物にし、真ん中に枠（.setup-panel）を置く -->
+    <div class="setup-panel">
+    <!-- 開いたときは見出しにフォーカスする（左上の「デッキ作成に戻る」に枠が出ないように） -->
+    <h2 class="panel-head" tabindex="-1" autofocus><b>GAME START</b><small>ゲームの開始</small></h2>
     <form method="dialog" id="setup-form" class="dialog-body">
       <label class="field">デッキ <select id="setup-deck"></select></label>
       <fieldset class="order well">
@@ -207,10 +212,10 @@
       </fieldset>
       <p id="setup-error" class="error"></p>
       <div class="dialog-actions">
-        <a href="index.html">デッキ作成に戻る</a>
         <button value="start" class="primary">開始</button>
       </div>
     </form>
+    </div>
   </dialog>
 
   <dialog id="viewer" class="viewer">

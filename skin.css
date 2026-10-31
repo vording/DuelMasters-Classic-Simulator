@@ -889,3 +889,14 @@ html.phone .gallery-bgm { grid-template-columns: 1fr 1fr; }
 /* 歯車は設定画面へのリンク */
 a.settings-btn { display: block; flex: none; }
 
+
+/* 「ゲームの開始」画面：画面いっぱいの入れ物（背景はマッチング画面と同じ）の真ん中に枠、左上にデッキ作成に戻る */
+#setup.setup { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: 0; overflow-y: auto; background: transparent; border: 0; border-radius: 0; box-shadow: none; animation: none; }
+#setup.setup[open] { display: grid; place-items: center; }
+.setup-panel { width: min(420px, 92vw); margin: 56px 0 24px; color: var(--ink); background: #0a1a46; border: 1px solid var(--cyan); border-radius: 16px; box-shadow: 0 0 0 1px rgba(31, 107, 255, .6), 0 18px 50px rgba(0, 0, 0, .6); overflow: hidden;
+  animation: win-in .26s cubic-bezier(.2, .9, .25, 1.15) both; }
+.setup-back { position: absolute; top: 12px; left: 12px; z-index: 1; display: inline-flex; align-items: center; min-height: 34px; padding: 4px 14px; color: var(--ink); font-weight: 700; text-decoration: none;
+  background: linear-gradient(180deg, #1c3f8c, #0f2560); border: 1px solid rgba(57, 208, 255, .6); border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16); }
+.setup-back:hover { background: linear-gradient(180deg, #2554b5, #143379); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 0 0 1px var(--cyan); }
+html.phone .setup-back { top: 8px; left: 8px; min-height: 36px; }
+.setup-panel .panel-head:focus { outline: none; }
