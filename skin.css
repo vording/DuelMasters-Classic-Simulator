@@ -854,21 +854,31 @@ html.phone .song-title { top: 42px; right: 6px; font-size: 11px; padding: 3px 9p
 /* 開始画面：一人回しの画面では一人回しだけ、対戦の画面ではネット対戦だけを出す */
 body:not(.solo-page) .setup .mode-solo, body.solo-page .setup .mode-net, body.solo-page #order-note { display: none; }
 
-/* ---------- エクスポート（app.js の openExport）：カードの一覧と QR コード ---------- */
-.export-dialog { width: min(860px, 96vw); }
+/* ---------- エクスポート（app.js の openExport）：デッキ名・キーカードのイラストと QR コード・カードの一覧 ---------- */
+.export-dialog { width: min(900px, 96vw); }
 .export-dialog .dialog-body { max-height: calc(92dvh - 40px); overflow-y: auto; }
+.export-deck-name { margin: 0 0 10px; font-weight: 900; font-size: 22px; color: #fff; overflow-wrap: anywhere; }
 .export-main { display: flex; gap: 14px; align-items: flex-start; }
-.export-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 56dvh; overflow-y: auto; padding: 8px; background: rgba(0, 0, 0, .25); border-radius: 12px; }
+/* PC：左にキーカードのイラスト、左下に QR コード */
+.export-key { position: relative; flex: none; width: 240px; aspect-ratio: 63 / 88; min-height: 0; }
+/* 中身（読み込み中のカードの枠の表示）で枠が伸びないようにする */
+.export-key .cover-art > .dm-face { position: absolute; inset: 0; }
+.export-key > .cover-art, .export-key > .dm-face { width: 100%; height: 100%; }
+.export-qr { position: absolute; left: 10px; bottom: 10px; z-index: 1; width: 96px; aspect-ratio: 1; display: grid; place-items: center; padding: 3px; color: var(--muted); font-size: 11px; text-align: center; background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, .6); }
+.export-qr svg { display: block; width: 100%; height: 100%; }
+.export-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 60dvh; overflow-y: auto; padding: 8px; background: rgba(0, 0, 0, .25); border-radius: 12px; }
 .export-card { position: relative; }
 .export-card .dm-face { width: 100%; }
 .export-qty { position: absolute; right: 2px; bottom: 2px; padding: 0 6px; font: 400 13px/1.4 var(--font-en); color: #08122e; background: var(--lime); border-radius: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
-.export-qr-box { flex: none; width: 112px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.export-qr { width: 112px; aspect-ratio: 1; display: grid; place-items: center; padding: 3px; color: var(--muted); font-size: 12px; text-align: center; background: #fff; border-radius: 12px; }
-.export-qr svg { display: block; width: 100%; height: 100%; }
 .export-dialog textarea { width: 100%; margin-top: 10px; }
-html.phone .export-main { flex-direction: column-reverse; align-items: stretch; }
-html.phone .export-qr-box { width: auto; align-items: center; }
-html.phone .export-qr { width: 104px; }
 /* ボタンはいつも見えるように、ダイアログの下に固定する */
 .export-dialog .dialog-actions { position: sticky; bottom: -1px; margin-top: 10px; padding: 8px 0 2px; background: var(--panel); box-shadow: 0 16px 0 var(--panel); }
+/* スマホ：一覧の上にキーカードのイラスト（横長）、右上に QR コード */
+html.phone .export-deck-name { font-size: 18px; }
+html.phone .export-main { flex-direction: column; align-items: stretch; gap: 10px; }
+html.phone .export-key { width: 100%; aspect-ratio: 2 / 1; }
+html.phone .export-qr { left: auto; bottom: auto; right: 8px; top: 8px; width: 88px; }
+/* 横長の枠では、イラストの幅を枠の幅に合わせて切り出す */
+html.phone .export-key .cover-art > img { left: calc(-100% * var(--art-x) / var(--art-w)); top: 50%; width: calc(100% / var(--art-w)); height: auto; transform: translateY(calc(-100% * var(--art-cy))); }
+html.phone .export-key .cover-art { --art-x: .12; --art-w: .76; --art-cy: .33; }
 html.phone .export-cards { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); max-height: none; overflow: visible; }
