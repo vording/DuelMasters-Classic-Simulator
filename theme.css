@@ -293,7 +293,7 @@ html.phone .row .name { -webkit-touch-callout: none; -webkit-user-select: none; 
 .card-detail-actions:empty { display: none; }
 .card-detail-actions button { min-width: 110px; min-height: 40px; font-size: 15px; }
 
-/* ロゴ（img/logo.png）。スマホは小さくして「CLASSIC SYSTEM」を省く */
+/* ロゴ（logo.js が入れる SVG）。スマホは小さくして「CLASSIC SYSTEM」を省く */
 .logo { display: flex; align-items: center; }
 .logo-img { display: block; height: 40px; width: auto; }
 html.phone .logo-img { height: 34px; }

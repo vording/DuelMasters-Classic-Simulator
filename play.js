@@ -1,4 +1,4 @@
-// デュエマ System — 一人回し／ネット対戦（カードの効果は effects.js で自動処理。自動にない効果は手で処理）
+// DuelMasters Classic Simulator — 一人回し／ネット対戦（カードの効果は effects.js で自動処理。自動にない効果は手で処理）
 // 自分のゲーム状態はすべて `game` に持ち、変更は act() を通して行う（元に戻すのため）。
 // ネット対戦では、描画のたびに自分の公開情報（snapshot）を相手に送り、相手の公開情報を `opp` に受け取る。
 // 手札とシールドの中身・山札の順番は送らない。
@@ -2054,7 +2054,7 @@ function setupNet() {
 // 部屋コードを共有（共有できなければコピー）
 async function shareRoomCode() {
   const code = Net.code;
-  const text = `デュエマ System の部屋コード：${code}`;
+  const text = `DuelMasters Classic Simulator の部屋コード：${code}`;
   if (navigator.share) {
     try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; }
   }

@@ -1,4 +1,4 @@
-// デュエマ System — ネット対戦の通信部分
+// DuelMasters Classic Simulator — ネット対戦の通信部分
 // PeerJS（無料の公開サーバーで仲介 → ブラウザ同士で直接通信）で2人をつなぐ。
 // URL に ?local=1 を付けると、同じPCの別タブ同士を BroadcastChannel でつなぐ（動作確認用）。
 //

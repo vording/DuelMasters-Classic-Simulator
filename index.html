@@ -3,22 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>デュエマ System</title>
+  <title>DuelMasters Classic Simulator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
-  <link rel="stylesheet" href="theme.css?v=7">
+  <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=25">
+  <link rel="stylesheet" href="skin.css?v=26">
   <script src="device.js?v=1"></script>
-  <script src="zoom.js?v=7"></script>
+  <script src="logo.js?v=1"></script>
+  <script src="zoom.js?v=8"></script>
 </head>
 <body>
   <!-- スタート画面（開いたとき最初に出す。真ん中の START でデッキ選択へ。app.js の showTitle / startFromTitle） -->
   <div class="title-screen" id="title-screen" hidden>
     <!-- 真っ暗な画面にロゴと TOUCH START だけ。画面のどこを押してもスタート -->
     <button type="button" id="title-start" class="title-start" aria-label="スタート">
-      <img class="title-logo" src="img/logo.png" alt="デュエル・マスターズ">
+      <span class="logo-mark title-logo" role="img" aria-label="DuelMasters Classic Simulator"></span>
       <span class="title-touch" aria-hidden="true">TOUCH START</span>
     </button>
   </div>
@@ -32,7 +33,7 @@
   <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i><i class="fx-civ civ-mark-light"></i><i class="fx-civ civ-mark-water"></i><i class="fx-civ civ-mark-darkness"></i><i class="fx-civ civ-mark-fire"></i><i class="fx-civ civ-mark-nature"></i></div>
   <div class="app">
     <header class="topbar">
-      <h1 class="logo"><img class="logo-img" src="img/logo.png" alt="デュエル・マスターズ"><small>CLASSIC 基本編</small></h1>
+      <h1 class="logo"><span class="logo-mark logo-img" role="img" aria-label="DuelMasters Classic Simulator"></span><small>CLASSIC 基本編</small></h1>
       <nav class="nav">
         <span class="active"><b>DECK BUILD</b><small>デッキ作成</small></span>
         <a href="play.html"><b>BATTLE</b><small>一人回し・対戦</small></a>
@@ -50,6 +51,11 @@
       </div>
       <div id="home-decks" class="home-decks"></div>
     </section>
+
+    <!-- 編集画面の左上：デッキ選択に戻る（スマホではカード一覧・デッキのどちらのタブからでも戻れる） -->
+    <div class="edit-bar">
+      <button type="button" id="deck-back" class="back-btn">◀ デッキ選択に戻る</button>
+    </div>
 
     <!-- スマホ用：カード一覧とデッキの切り替え -->
     <nav class="phone-tabs">
@@ -74,7 +80,6 @@
       <section class="panel deck-panel">
         <h2 class="panel-head"><b>DECK</b><small>デッキ</small><span class="head-note"><span id="deck-count">0</span> / 40</span></h2>
         <div class="deck-top">
-          <button type="button" id="deck-back" class="back-btn">◀ デッキ選択に戻る</button>
           <select id="deck-select" aria-label="デッキを選択"></select>
           <div class="deck-actions">
             <button id="deck-new">新規</button>
@@ -166,7 +171,7 @@
   </dialog>
 
   <script src="sound.js?v=10"></script>
-  <script src="settings.js?v=6"></script>
+  <script src="settings.js?v=7"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
   <script src="app.js?v=21"></script>

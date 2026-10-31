@@ -1,4 +1,4 @@
-// デュエマ System — デッキ作成（カードのデータは cards.js・classic-cards.js）
+// DuelMasters Classic Simulator — デッキ作成（カードのデータは cards.js・classic-cards.js）
 
 const $ = (id) => document.getElementById(id);
 
