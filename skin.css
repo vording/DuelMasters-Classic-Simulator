@@ -817,3 +817,11 @@ dialog.settings .panel-head:focus { outline: none; }
 .row.key { background: rgba(255, 212, 0, .12); }
 .row.key .key-btn { color: #ffd400; text-shadow: 0 0 6px rgba(255, 212, 0, .7); }
 html.phone .row .key-btn { width: 30px; font-size: 18px; }
+
+/* ---------- 対戦の曲名（play.js の showSongTitle）：始まってから10秒ほど、画面の右上の端に出す ---------- */
+.song-title { position: fixed; top: 76px; right: 14px; z-index: 350; max-width: min(60vw, 360px); padding: 6px 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 400 15px/1.2 var(--font-en); letter-spacing: .04em; color: #fff; background: rgba(4, 10, 30, .82); border: 1px solid var(--cyan); border-radius: 999px;
+  box-shadow: 0 0 14px rgba(57, 208, 255, .45); pointer-events: none; animation: song-in .5s cubic-bezier(.2, .9, .3, 1.2) both, song-out .6s ease-in 9.4s both; }
+html.phone .song-title { top: 42px; right: 6px; font-size: 11px; padding: 3px 9px; }
+@keyframes song-in { from { opacity: 0; transform: translateX(30px); } }
+@keyframes song-out { to { opacity: 0; transform: translateX(30px); } }
