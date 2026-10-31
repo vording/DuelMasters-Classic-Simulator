@@ -310,7 +310,7 @@ async function openExport() {
     const qr = qrcode(0, 'L');
     qr.addData(url);
     qr.make();
-    $('export-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: 'デッキの共有リンクの QR コード' });
+    $('export-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true, alt: 'デッキの共有リンクの QR コード' });
   } catch {
     $('export-qr').textContent = 'デッキが大きすぎて QR コードにできません。共有リンクを使ってください';
   }
@@ -385,7 +385,7 @@ function runImport(e) {
 
 // ---------- 共有リンク ----------
 // デッキ名・カード名と枚数を URL の # 以降に詰める（サーバーには送られない）。
-// 形式: #deck=<z|j><base64url>（z: deflate で圧縮した JSON、j: 圧縮なし）。
+// 形式: #deck=<z|j><base64url>（z: deflate で圧縮した JSON、j: 圧縮なし）。JSON は { n: デッキ名, i: [[枚数, カード番号], …] }。
 // 以前の版のリンク（カードの情報ごと入っている）も、名前で読み込む
 
 const toBase64Url = (bytes) => {
@@ -397,7 +397,8 @@ const fromBase64Url = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').rep
 const pipeBytes = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
 
 async function deckLink(deck) {
-  const data = { n: deck.name, c: deckEntries(deck).map((e) => [e.qty, e.card.name]) };
+  // カードはカード番号で入れる（名前より短く、QR コードが小さくて済む）
+  const data = { n: deck.name, i: deckEntries(deck).map((e) => [e.qty, e.card.id]) };
   let bytes = new TextEncoder().encode(JSON.stringify(data));
   let tag = 'j';
   if (window.CompressionStream) {
@@ -411,6 +412,8 @@ async function readDeckLink(value) {
   let bytes = fromBase64Url(value.slice(1));
   if (value[0] === 'z') bytes = await pipeBytes(bytes, new DecompressionStream('deflate-raw'));
   const data = JSON.parse(new TextDecoder().decode(bytes));
+  // カード番号のリンク（i）は名前に直す。以前の版のリンク（c）は名前のまま
+  if (Array.isArray(data?.i)) data.c = data.i.map(([qty, id]) => [qty, CARDS[id]?.name ?? String(id)]);
   if (!Array.isArray(data?.c)) throw new Error('bad link');
   return data;
 }
@@ -687,12 +690,9 @@ function init() {
   $('deck-rename').addEventListener('click', renameDeck);
   $('deck-copy').addEventListener('click', copyDeck);
   $('deck-delete').addEventListener('click', deleteDeck);
-  // 一人回しはデッキ作成からだけ開ける（play.html?mode=solo）。対戦はネット対戦
+  // 一人回しはデッキ作成からだけ開ける（play.html?mode=solo）。対戦（ネット対戦）は上の BATTLE・デッキ選択から
   $('deck-solo').addEventListener('click', () => {
     Bgm.leave(`play.html?mode=solo&deck=${activeDeck().id}`);
-  });
-  $('deck-play').addEventListener('click', () => {
-    Bgm.leave(`play.html?deck=${activeDeck().id}`);
   });
   $('clear').addEventListener('click', () => {
     if (!deckTotal() || confirm('デッキを空にしますか？')) {

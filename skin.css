@@ -862,14 +862,13 @@ body:not(.solo-page) .setup .mode-solo, body.solo-page .setup .mode-net, body.so
 .export-card { position: relative; }
 .export-card .dm-face { width: 100%; }
 .export-qty { position: absolute; right: 2px; bottom: 2px; padding: 0 6px; font: 400 13px/1.4 var(--font-en); color: #08122e; background: var(--lime); border-radius: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
-.export-qr-box { flex: none; width: 200px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.export-qr { width: 200px; aspect-ratio: 1; display: grid; place-items: center; padding: 6px; color: var(--muted); font-size: 12px; text-align: center; background: #fff; border-radius: 12px; }
+.export-qr-box { flex: none; width: 112px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.export-qr { width: 112px; aspect-ratio: 1; display: grid; place-items: center; padding: 3px; color: var(--muted); font-size: 12px; text-align: center; background: #fff; border-radius: 12px; }
 .export-qr svg { display: block; width: 100%; height: 100%; }
-.export-qr-note { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
 .export-dialog textarea { width: 100%; margin-top: 10px; }
 html.phone .export-main { flex-direction: column-reverse; align-items: stretch; }
-html.phone .export-qr-box { width: auto; }
-html.phone .export-qr { width: min(180px, 52vw); }
+html.phone .export-qr-box { width: auto; align-items: center; }
+html.phone .export-qr { width: 104px; }
 /* ボタンはいつも見えるように、ダイアログの下に固定する */
 .export-dialog .dialog-actions { position: sticky; bottom: -1px; margin-top: 10px; padding: 8px 0 2px; background: var(--panel); box-shadow: 0 16px 0 var(--panel); }
 html.phone .export-cards { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); max-height: none; overflow: visible; }
