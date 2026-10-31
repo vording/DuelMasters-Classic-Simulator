@@ -86,17 +86,29 @@
     return [...hand].sort((a, b) => score(b) - score(a))[0];
   }
 
+  // クリーチャーを狙う呪文（破壊・手札に戻す・タップ・マナや墓地に送る など）
+  const TARGETS_CREATURE = /クリーチャー[^。]*(破壊|手札に戻|タップ|マナゾーンに置|墓地に置|山札|シールド)/;
+  // 相手のクリーチャーがいないときに使っても意味のない呪文か（どの強さでも使わない）
+  const AIMS_AT = /相手のクリーチャー|相手クリーチャー|相手の「ブロッカー」|相手の光のクリーチャー|クリーチャーを[12１２]体|クリーチャー(を)?すべて|すべてのクリーチャー/;
+  const wasted = (c) => {
+    const t = c.text ?? '';
+    if (!c.isSpell || theirs().length || !TARGETS_CREATURE.test(t) || !AIMS_AT.test(t)) return false;
+    // 自分のクリーチャー・墓地・マナを対象にする呪文（相手のクリーチャーに触れないもの）は、相手のクリーチャーがいなくても使える
+    const toOpp = /相手のクリーチャー|相手クリーチャー|相手の「ブロッカー」|相手の光のクリーチャー/.test(t);
+    if (!toOpp && /自分の(墓地|マナゾーン|[^、。]{0,4}クリーチャー)/.test(t)) return false;
+    // 相手のマナを減らす呪文（竜脈噴火など）は、相手のクリーチャーがいなくても使える
+    return !(/相手のマナゾーン/.test(t) && !/相手のクリーチャー/.test(t));
+  };
+
   // 出すカード（なければ null）
   function choosePlay() {
-    const hand = cards('hand').filter((c) => !(typeof spellLocked === 'function' && spellLocked(c)) && payable(c));
+    const hand = cards('hand').filter((c) => !(typeof spellLocked === 'function' && spellLocked(c)) && payable(c) && !wasted(c));
     const usable = hand.filter((c) => !(c.ab?.evolution && c.isCreature) || evolutionBase(c));
     if (!usable.length) return null;
     if (LEVEL === 1) return chance(0.7) ? pickRandom(usable) : null;
     const score = (c) => {
       let s = cost(c) * 10 + power(c) / 1000;
       if (LEVEL === 3) {
-        // 相手にクリーチャーがいないとき、相手に関係する呪文は後回し
-        if (c.isSpell && !theirs().length && /相手のクリーチャー/.test(c.text ?? '')) s -= 40;
         // ブロッカーは、自分のシールドが少ないときに優先
         if (c.ab?.blocker && game.zones.shields.length <= 2) s += 15;
       }
@@ -207,7 +219,7 @@
     if (trig != null) {
       const c = game.cards[trig];
       if (!isTrigger(trig)) return confirmShield(trig);
-      if (spellLocked(c) || (LEVEL === 1 && chance(0.3))) return skipTrigger(trig);
+      if (spellLocked(c) || wasted(c) || (LEVEL === 1 && chance(0.3))) return skipTrigger(trig);
       return useTrigger(trig);
     }
     // 相手の攻撃：ブロックするか（ブロックできるクリーチャーがいなければ play.js が自動で「ブロックしない」）
