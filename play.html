@@ -9,14 +9,14 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=7">
   <link rel="stylesheet" href="play.css?v=15">
-  <link rel="stylesheet" href="skin.css?v=23">
+  <link rel="stylesheet" href="skin.css?v=24">
   <script src="device.js?v=1"></script>
   <script src="felt.js?v=2"></script>
   <script src="zoom.js?v=7"></script>
 </head>
 <body>
   <!-- 背景で動くオブジェクト（skin.css） -->
-  <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i></div>
+  <div class="fx" aria-hidden="true"><i class="fx-ring"></i><i class="fx-ring r2"></i><i class="fx-dots"></i><i class="fx-stripes"></i><i class="fx-civ civ-mark-light"></i><i class="fx-civ civ-mark-water"></i><i class="fx-civ civ-mark-darkness"></i><i class="fx-civ civ-mark-fire"></i><i class="fx-civ civ-mark-nature"></i></div>
   <div class="app">
     <header class="topbar">
       <h1 class="logo"><img class="logo-img" src="img/logo.png" alt="デュエル・マスターズ"><small>CLASSIC 基本編</small></h1>
@@ -30,7 +30,7 @@
       <button id="undo" title="元に戻す（Ctrl+Z）" aria-label="元に戻す">元に戻す</button>
       <button id="restart" title="リスタート" aria-label="リスタート">リスタート</button>
     </header>
-    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ DUEL MASTERS CLASSIC ✦ DECK BUILD ✦ SOLO PLAY ✦ ONLINE MATCH ✦ 基本編 ✦ SHIELD TRIGGER ✦ BLOCKER ✦ </span></div>
+    <div class="ticker" aria-hidden="true"><span>DUEL MASTERS CLASSIC <i class="tk civ-mark-light"></i> DECK BUILD <i class="tk civ-mark-water"></i> SOLO PLAY <i class="tk civ-mark-darkness"></i> ONLINE MATCH <i class="tk civ-mark-fire"></i> 基本編 <i class="tk civ-mark-nature"></i> SHIELD TRIGGER <i class="tk civ-mark-light"></i> BLOCKER <i class="tk civ-mark-water"></i> DUEL MASTERS CLASSIC <i class="tk civ-mark-light"></i> DECK BUILD <i class="tk civ-mark-water"></i> SOLO PLAY <i class="tk civ-mark-darkness"></i> ONLINE MATCH <i class="tk civ-mark-fire"></i> 基本編 <i class="tk civ-mark-nature"></i> SHIELD TRIGGER <i class="tk civ-mark-light"></i> BLOCKER <i class="tk civ-mark-water"></i> </span></div>
 
     <main class="table">
       <!-- 左：カード・状況・フェイズ -->
@@ -159,6 +159,7 @@
   <!-- ネット対戦：マッチングするまでの画面 -->
   <div id="matching" class="matching" hidden>
     <div class="matching-radar" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="matching-civs" aria-hidden="true"><i class="civ-mark-light"></i><i class="civ-mark-water"></i><i class="civ-mark-darkness"></i><i class="civ-mark-fire"></i><i class="civ-mark-nature"></i></div>
     <h2 class="matching-title"><b>MATCHING</b><small id="matching-sub"></small></h2>
     <div class="matching-vs">
       <div class="matching-player"><span class="avatar" id="matching-my-avatar"></span><span class="name" id="matching-my-name"></span></div>
@@ -235,11 +236,11 @@
 
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <script src="sound.js?v=10"></script>
-  <script src="settings.js?v=5"></script>
+  <script src="settings.js?v=6"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
   <script src="net.js?v=2"></script>
   <script src="effects.js?v=4"></script>
-  <script src="play.js?v=18"></script>
+  <script src="play.js?v=19"></script>
 </body>
 </html>

@@ -1826,6 +1826,8 @@ function renderOpp() {
   const on = online();
   document.body.classList.toggle('online', on);
   for (const id of ['opp-area', 'opp-player', 'chat-form']) $(id).hidden = !on;
+  // 一人回しに切り替えたときも、マッチング画面を閉じる
+  renderMatching();
   if (!on) return;
   const st = opp?.state;
   $('opp-player-name').textContent = oppName();
@@ -1863,7 +1865,6 @@ function renderOpp() {
   else label = `${oppName()}：ターン${st.turn}${st.waiting ? '（待機中）' : `・${phaseName(st.phase)}`}`;
   $('opp-status').textContent = label;
   $('opp-area').classList.toggle('active-turn', !!st && st.turn > 0 && !st.waiting);
-  renderMatching();
 }
 
 // ネット対戦：手札を配る（マッチングする）までは、マッチング画面を出す
@@ -2217,6 +2218,7 @@ function startFromSetup(e) {
     Net.stop();
     netInfo = null;
     opp = null;
+    $('net-status').textContent = '';
   } else if (mode === 'host' && !(Net.role === 'host' && /^\d{6}$/.test(Net.code))) {
     Net.stop();
     opp = null;
