@@ -243,8 +243,12 @@ function newGame(deck, onDraw, random = false) {
     passReceived: false,
     matchId: online() && Net.role === 'host' ? Math.random().toString(36).slice(2) : null,
     prevMatchId,
+    // 対戦中の BGM：対戦ごとにランダムで1曲（曲名は始まってから少しのあいだ表示する）
+    bgm: Math.floor(Math.random() * BATTLE_BGM.length),
+    bgmShown: false,
   };
   if (online() && Net.role === 'guest' && isNewHostGame(pendingHost)) adoptHostOrder(pendingHost);
+  Bgm.preload(battleBgm().file);
   history = [];
   incomingAttack = null;
   shownResult = null;
@@ -1406,8 +1410,31 @@ function render() {
 }
 
 // 対戦の準備中（開始画面・相手の参加や1ターン目を待っている間）は ready、ゲームが始まったら battle
+// 対戦中の曲（bgm/<file>.mp3）。対戦ごとにランダムで選ぶ
+const BATTLE_BGM = [
+  { file: 'battle', title: 'Hybrid Landscape' },
+  { file: 'battle-cyber-girl', title: 'Cyber girl' },
+  { file: 'battle-all-is-vanity', title: 'All is vanity' },
+];
+const battleBgm = () => BATTLE_BGM[game?.bgm] ?? BATTLE_BGM[0];
+
 function updateBgm() {
-  Bgm.play(started() && !$('setup').open ? 'battle' : 'ready');
+  const battle = started() && !$('setup').open;
+  Bgm.play(battle ? battleBgm().file : 'ready');
+  // 対戦が始まったら、最初の10秒ほど曲名を画面の端に出す（1回の対戦で1回）
+  if (battle && !game.bgmShown) {
+    game.bgmShown = true;
+    saveGame();
+    if (Bgm.on) showSongTitle(battleBgm().title);
+  }
+}
+
+function showSongTitle(title) {
+  document.querySelector('.song-title')?.remove();
+  const el = Object.assign(document.createElement('div'), { className: 'song-title', textContent: `♪ ${title}` });
+  el.setAttribute('aria-hidden', 'true');
+  document.body.append(el);
+  setTimeout(() => el.remove(), 10000);
 }
 
 // ---------- 召喚の演出 ----------
@@ -2339,9 +2366,9 @@ function init() {
 
   setupDropZones();
   setupNet();
-  // BGM：開始画面・相手待ちは ready、ゲームが始まったら battle（render の updateBgm）
+  // BGM：開始画面・相手待ちは ready、ゲームが始まったら対戦の曲（render の updateBgm）
   Bgm.play('ready');
-  Bgm.preload('battle');
+  if (game) Bgm.preload(battleBgm().file);
 
   // 再読み込みしたら同じ部屋に戻る
   if (netInfo?.role === 'host') Net.host(netInfo.code);
