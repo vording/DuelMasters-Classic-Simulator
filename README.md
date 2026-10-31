@@ -120,11 +120,12 @@
 | select | デッキ選択 | State Of The Art |
 | edit | デッキ編集 | evergreen |
 | ready | 対戦の準備（開始画面・相手待ち・1ターン目の前）。頭の1秒を削って流す | beatonic nation |
-| battle | 対戦中（3曲から対戦ごとにランダム） | Hybrid Landscape |
+| battle | 対戦中（4曲から対戦ごとにランダム） | Hybrid Landscape |
 | battle-cyber-girl | 〃 | Cyber girl |
 | battle-all-is-vanity | 〃 | All is vanity |
+| battle-watering | 〃 | WATERING |
 
-対戦中の曲は、1回の対戦ごとに3曲からランダムで選び、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
+対戦中の曲は、1回の対戦ごとに4曲からランダムで選び、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
 
 ※ 曲はユーザーが用意したファイルです。公開する場合は、曲の利用条件を確認してください。
 
