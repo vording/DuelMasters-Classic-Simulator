@@ -113,6 +113,15 @@ body { font-weight: 500; color: var(--ink); }
 .logo { display: flex; align-items: center; gap: 8px; }
 /* ロゴは帯より少し大きくして、上下にはみ出させる（竜の絵が薄いので文字を大きく見せる） */
 .logo-img { height: 58px; margin: 0 0 -14px -4px; transform: translateY(5px); filter: drop-shadow(0 2px 2px rgba(10, 30, 90, .35)); }
+/* ロゴ（龍。logo.js が SVG を入れる）：水色→青のグラデーション（場所ごとに --logo-c1・--logo-c2 で変える） */
+.logo-mark { --logo-c1: var(--cyan); --logo-c2: var(--blue); display: block; flex: none; aspect-ratio: 1152 / 1096; }
+.logo-mark svg { display: block; width: 100%; height: 100%; }
+.logo-mark .logo-c1 { stop-color: var(--logo-c1); }
+.logo-mark .logo-c2 { stop-color: var(--logo-c2); }
+/* 暗い画面（スタート画面）は明るめ、青い画面（ワイプ）は黄緑→白 */
+.title-logo { --logo-c1: #8ff0ff; --logo-c2: var(--cyan); }
+.wipe-logo { --logo-c1: var(--lime); --logo-c2: #fff; }
+.logo .logo-img { height: 46px; margin: -4px 0 -4px 2px; transform: none; filter: drop-shadow(0 1px 2px rgba(10, 30, 90, .45)); }
 .logo small { color: #2b4f9a; font: 400 11px var(--font-en); letter-spacing: .14em; }
 .logo::after {
   content: "";
@@ -466,7 +475,7 @@ body.online .banner { border-radius: 0; border-width: 1px 0; box-shadow: none; b
 
 html.phone .topbar { gap: 8px; min-height: 44px; padding: 4px 8px; }
 html.phone .logo small, html.phone .logo::after, html.phone .nav small, html.phone .topbar .game-title { display: none; }
-html.phone .logo-img { height: 46px; margin: 0 0 -10px -4px; transform: translateY(4px); }
+html.phone .logo .logo-img { height: 36px; margin: -2px 0; transform: none; }
 html.phone .nav a, html.phone .nav span { padding: 4px 9px; }
 html.phone .nav b { font-size: 12px; }
 html.phone .phone-bar { background: rgba(5, 12, 36, .96); border-top: 2px solid var(--blue); }
@@ -574,7 +583,7 @@ html.phone .cutin-inner { flex-direction: column; text-align: center; }
 html.phone .cutin-text { align-items: center; }
 @media (prefers-reduced-motion: reduce) { .cutin-flash, .cutin-band, .cutin-card .dm-face, .cutin-text { animation-duration: .01s; } }
 /* ---------- デッキ選択（最初の画面）と編集画面の切り替え（app.js の route） ---------- */
-body[data-view="home"] .layout, body[data-view="home"] .phone-tabs { display: none !important; }
+body[data-view="home"] .layout, body[data-view="home"] .phone-tabs, body[data-view="home"] .edit-bar { display: none !important; }
 body:not([data-view="home"]) .deck-home { display: none; }
 .deck-home { flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 14px 16px 24px; overflow-y: auto; animation: rise-in .35s cubic-bezier(.2, .8, .2, 1) both; }
 .home-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
@@ -590,7 +599,10 @@ body:not([data-view="home"]) .deck-home { display: none; }
 .tile-count.ok { color: var(--lime); }
 .tile-actions { display: flex; gap: 6px; }
 .tile-actions button { flex: 1; min-width: 0; }
-.back-btn { align-self: flex-start; }
+/* 編集画面の左上：デッキ選択に戻る */
+.edit-bar { display: flex; flex: none; padding: 10px 10px 0; }
+html.phone .edit-bar { padding: 6px 6px 0; }
+html.phone .edit-bar .back-btn { min-height: 36px; }
 html.phone .home-decks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 html.phone .deck-home { padding: 10px 10px 20px; }
 html.phone .deck-tile { padding: 8px; }
@@ -626,7 +638,7 @@ html.phone .deck-tile { padding: 8px; }
 .wipe.out .wipe-panel { transform: translateX(140%) skewX(-18deg); transition: transform .5s cubic-bezier(.75, 0, .25, 1); }
 .wipe.out .p2 { transition-delay: .06s; }
 .wipe.out .p1 { transition-delay: .12s; }
-.wipe-logo { position: absolute; left: 50%; top: 50%; height: clamp(60px, 14vw, 120px); opacity: 0; transform: translate(-50%, -50%) scale(.5) rotate(-8deg); filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .6)); }
+.wipe-logo { position: absolute; left: 50%; top: 50%; height: clamp(80px, 18vw, 160px); opacity: 0; transform: translate(-50%, -50%) scale(.5) rotate(-8deg); filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .6)); }
 .wipe.in .wipe-logo { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-4deg); transition: opacity .2s .3s, transform .35s .3s cubic-bezier(.2, .9, .25, 1.4); }
 .wipe.out .wipe-logo { opacity: 0; transform: translate(-50%, -50%) scale(1.4) rotate(-4deg); transition: opacity .2s, transform .25s; }
 .wipe.instant .wipe-panel, .wipe.instant .wipe-logo { transition: none !important; }
@@ -638,7 +650,7 @@ html.phone .deck-tile { padding: 8px; }
 .title-screen { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center; overflow: hidden; background: #000; cursor: pointer; }
 .title-screen[hidden] { display: none; }
 .title-start, .title-start:hover:not(:disabled), .title-start:active:not(:disabled), .title-start:focus-visible { display: flex; flex-direction: column; align-items: center; gap: clamp(24px, 6vh, 56px); padding: 16px; background: none; border: 0; box-shadow: none; outline: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.title-logo { display: block; width: min(620px, 86vw); height: auto; filter: drop-shadow(0 0 24px rgba(31, 191, 255, .45));
+.title-logo { display: block; width: min(380px, 70vw); height: auto; filter: drop-shadow(0 0 24px rgba(57, 208, 255, .6));
   animation: title-in 1.2s ease-out both, title-bob 4s ease-in-out 1.2s infinite, title-glow 2.4s ease-in-out 1.2s infinite; }
 .title-touch { font: 400 clamp(16px, 3.6vw, 24px)/1 var(--font-en); letter-spacing: .4em; padding-left: .4em; color: #fff; text-shadow: 0 0 12px rgba(31, 191, 255, .8);
   animation: title-in 1.2s ease-out .4s both, title-blink 1.4s ease-in-out 1.6s infinite; }
@@ -647,7 +659,7 @@ html.phone .deck-tile { padding: 8px; }
 @keyframes title-out { to { opacity: 0; } }
 @keyframes title-in { from { opacity: 0; transform: scale(.94); } }
 @keyframes title-bob { 50% { transform: translateY(-12px); } }
-@keyframes title-glow { 50% { opacity: .35; filter: drop-shadow(0 0 6px rgba(31, 191, 255, .2)); } }
+@keyframes title-glow { 50% { opacity: .35; filter: drop-shadow(0 0 6px rgba(57, 208, 255, .25)); } }
 
 /* ---- ロゴを押したとき：光の輪と火花、ロゴが手前に飛んでくる ---- */
 .title-burst { position: absolute; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; }

@@ -153,8 +153,9 @@
     wipe = document.createElement('div');
     wipe.className = 'wipe';
     wipe.setAttribute('aria-hidden', 'true');
-    wipe.innerHTML = '<i class="wipe-panel p1"></i><i class="wipe-panel p2"></i><i class="wipe-panel p3"></i><img class="wipe-logo" src="img/logo.png" alt="">';
+    wipe.innerHTML = '<i class="wipe-panel p1"></i><i class="wipe-panel p2"></i><i class="wipe-panel p3"></i><span class="logo-mark wipe-logo"></span>';
     document.body.append(wipe);
+    window.Logo?.render();
     return wipe;
   }
 

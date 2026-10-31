@@ -1,4 +1,4 @@
-// デュエマ System — カードのデータ（両画面で使う）
+// DuelMasters Classic Simulator — カードのデータ（両画面で使う）
 // カードは収録カード（classic-cards.js。基本編のカードだけ）を使う。保存するのはデッキと設定だけ。
 // ルールはクラシック基本編（殿堂は REGULATION）。
 // 保存の形: { decks: [{ id, name, sort, cards: { カードID: 枚数 } }], current, regulation }
