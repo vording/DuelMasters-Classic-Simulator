@@ -534,7 +534,6 @@ html.phone .app > .topbar { gap: 6px; }
 
 /* ---------- スマホの戦場：縦に収まるよう、シールドとマナを横に並べて1行にする ---------- */
 /* 自分：バトルゾーン／シールド・マナ。相手：マナ・シールド／バトルゾーン。列は折り返さず、あふれたら横にスクロール */
-html.phone .ticker { display: none; }
 html.phone .battlefield { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: end; gap: 4px 6px; overflow: hidden; }
 html.phone .battlefield.opp { align-content: start; }
 html.phone .battlefield > .bf-row { grid-column: 1 / -1; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
