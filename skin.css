@@ -892,3 +892,13 @@ html.phone .export-deck-name { margin-bottom: 6px; }
   html.phone .export-qr { width: 64px; }
   html.phone .export-cards { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
 }
+
+/* ---------- デッキ選択の編集モード（app.js の toggleHomeEdit）：並び替え・削除 ---------- */
+.home-actions .home-edit { margin-left: auto; }
+.deck-home.editing .deck-tile { cursor: default; border-style: dashed; animation: tile-wobble 1.6s ease-in-out infinite; }
+.deck-home.editing .deck-tile:hover { transform: none; box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+.deck-home.editing .deck-tile:nth-child(2n) { animation-delay: -.8s; }
+.tile-actions .tile-move { flex: 0 0 auto; min-width: 36px; padding: 0 6px; }
+.tile-actions .tile-delete, .tile-actions .tile-delete:hover:not(:disabled) { color: #fff; background: linear-gradient(180deg, #e0574d, #b3271d); border-color: #ff9a90; }
+@keyframes tile-wobble { 0%, 100% { rotate: -.6deg; } 50% { rotate: .6deg; } }
+@media (prefers-reduced-motion: reduce) { .deck-home.editing .deck-tile { animation: none; } }
