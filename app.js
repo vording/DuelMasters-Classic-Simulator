@@ -574,6 +574,18 @@ function renderRow({ card, qty }) {
   keyBtn.title = key ? 'キーカード（押すと解除）' : 'キーカードにする（デッキ選択の表紙に出す）';
   keyBtn.setAttribute('aria-pressed', String(key));
   keyBtn.addEventListener('click', () => toggleKeyCard(card));
+  // キーカードの行は、カードのイラストだけを切り出して行いっぱいに広げる（画像がなければ文明の色）
+  if (key) {
+    const art = document.createElement('div');
+    art.className = 'key-art';
+    art.style.setProperty('--civ-bg', `var(--civ-${DM.civOf(card.civs[0])?.cls ?? 'light'})`);
+    if (card.image) {
+      const img = Object.assign(document.createElement('img'), { alt: '', draggable: false, loading: 'lazy', src: card.image });
+      img.addEventListener('error', () => img.remove());
+      art.append(img);
+    }
+    row.prepend(art);
+  }
   row.querySelector('.qty').textContent = qty;
   row.querySelector('.cost').textContent = card.cost;
   row.querySelector('.name').textContent = card.name;

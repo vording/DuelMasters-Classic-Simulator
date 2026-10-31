@@ -837,3 +837,17 @@ html.phone .row .key-btn { width: 30px; font-size: 18px; }
 html.phone .song-title { top: 42px; right: 6px; font-size: 11px; padding: 3px 9px; }
 @keyframes song-in { from { opacity: 0; transform: translateX(30px); } }
 @keyframes song-out { to { opacity: 0; transform: translateX(30px); } }
+
+/* ---------- デッキリスト：キーカードの行（app.js の renderRow）。イラストだけを切り出して行いっぱいに広げる ---------- */
+/* カード画像のうちイラストの範囲（幅・高さに対する割合）。ずれていたらここだけ直す */
+.key-art { --art-x: .12; --art-w: .76; --art-cy: .33; }
+.row.key { position: relative; isolation: isolate; align-items: flex-end; aspect-ratio: 3 / 1; margin: 4px 0; padding: 6px 6px 6px 8px; overflow: hidden; color: #fff; background: none;
+  border: 2px solid #ffd400; border-radius: 10px; box-shadow: 0 0 12px rgba(255, 212, 0, .45); text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+.row.key:hover { background: none; }
+.key-art { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--civ-bg); }
+/* 画像の幅＝行の幅 ÷ イラストの幅、イラストの左端を行の左端に、イラストの縦の中心を行の中心に合わせる */
+.key-art img { position: absolute; left: calc(-100% * var(--art-x) / var(--art-w)); top: 50%; width: calc(100% / var(--art-w)); height: auto; transform: translateY(calc(-100% * var(--art-cy))); }
+/* 文字を読みやすくするため、下側を暗くする */
+.key-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(4, 10, 30, .85)); }
+.row.key .name { font-weight: 900; font-size: 15px; }
+.row.key .qty, .row.key .cost { color: #fff; }
