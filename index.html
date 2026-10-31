@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=31">
+  <link rel="stylesheet" href="skin.css?v=32">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
-  <script src="news.js?v=2"></script>
+  <script src="news.js?v=3"></script>
   <script src="zoom.js?v=8"></script>
 </head>
 <body>
@@ -37,7 +37,7 @@
       <h1 class="logo"><span class="logo-mark logo-img" role="img" aria-label="DuelMasters Classic Simulator"></span></h1>
       <nav class="nav">
         <span class="active"><b>DECK BUILD</b><small>デッキ作成</small></span>
-        <a href="play.html"><b>BATTLE</b><small>一人回し・対戦</small></a>
+        <a href="play.html"><b>BATTLE</b><small>対戦</small></a>
       </nav>
       <span class="spacer"></span>
     </header>
@@ -98,7 +98,10 @@
             <button id="import">インポート…</button>
             <button id="share-link" title="開くとこのデッキを追加できるリンク。LINE などで送れます">共有リンク</button>
           </div>
-          <button id="deck-play" class="primary play-btn"><b>BATTLE</b> 一人回し・対戦 ▶</button>
+          <div class="play-btns">
+            <button id="deck-solo" class="play-btn"><b>SOLO</b> 一人回し ▶</button>
+            <button id="deck-play" class="primary play-btn"><b>BATTLE</b> 対戦 ▶</button>
+          </div>
         </div>
         <!-- ここから下がスクロールする -->
         <div class="deck-body">
@@ -176,6 +179,6 @@
   <script src="settings.js?v=7"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

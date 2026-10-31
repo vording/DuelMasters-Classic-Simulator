@@ -105,6 +105,8 @@ function onSettingsChange() {
   if (Net.connected()) sendHello();
 }
 const online = () => Net.active;
+// 一人回しの画面か（デッキ作成の「一人回し」から開く play.html?mode=solo）。それ以外はネット対戦の画面
+const SOLO_PAGE = new URLSearchParams(location.search).get('mode') === 'solo';
 
 // ---------- スマホ（タッチ操作） ----------
 
@@ -1410,14 +1412,14 @@ function render() {
 }
 
 // 対戦の準備中（開始画面・相手の参加や1ターン目を待っている間）は ready、ゲームが始まったら battle
-// 対戦中の曲（bgm/<file>.mp3）。対戦ごとにランダムで選ぶ
+// 対戦中の曲（bgm/<file>.mp3）。ネット対戦は対戦ごとにランダムで選び、一人回しは専用の曲
 const BATTLE_BGM = [
   { file: 'battle', title: 'Hybrid Landscape' },
   { file: 'battle-cyber-girl', title: 'Cyber girl' },
   { file: 'battle-all-is-vanity', title: 'All is vanity' },
-  { file: 'battle-watering', title: 'WATERING' },
 ];
-const battleBgm = () => BATTLE_BGM[game?.bgm] ?? BATTLE_BGM[0];
+const SOLO_BGM = { file: 'battle-watering', title: 'WATERING' };
+const battleBgm = () => (SOLO_PAGE ? SOLO_BGM : BATTLE_BGM[game?.bgm] ?? BATTLE_BGM[0]);
 
 function updateBgm() {
   const battle = started() && !$('setup').open;
@@ -2209,7 +2211,7 @@ function openSetup() {
   select.value = String(requested || game?.deckId || decks[0]?.id || '');
   $('setup-error').textContent = decks.length ? '' : 'デッキがありません。デッキ作成画面で作ってください。';
   renderSetupPlayer();
-  const mode = netInfo?.role === 'host' ? 'host' : netInfo?.role === 'guest' ? 'join' : 'solo';
+  const mode = SOLO_PAGE ? 'solo' : netInfo?.role === 'guest' ? 'join' : 'host';
   $('setup-form').elements.mode.value = mode;
   $('room-code').value = netInfo?.role === 'guest' ? netInfo.code : '';
   updateSetupMode();
@@ -2302,6 +2304,12 @@ function dropCard(iid, zone) {
 }
 
 function init() {
+  // 一人回しの画面：見出し・ナビ・開始画面の選択肢を一人回し用にする
+  document.body.classList.toggle('solo-page', SOLO_PAGE);
+  if (SOLO_PAGE) {
+    document.title = '一人回し — DuelMasters Classic Simulator';
+    $('nav-play').innerHTML = '<b>SOLO</b><small>一人回し</small>';
+  }
   $('next-phase').addEventListener('click', nextPhase);
   $('end-turn').addEventListener('click', endTurn);
   $('undo').addEventListener('click', undo);
@@ -2370,6 +2378,14 @@ function init() {
   // BGM：開始画面・相手待ちは ready、ゲームが始まったら対戦の曲（render の updateBgm）
   Bgm.play('ready');
   if (game) Bgm.preload(battleBgm().file);
+
+  // 一人回しと対戦は別の画面：保存してあるゲームは、同じ種類の画面でだけ続きから
+  const savedOnline = !!netInfo;
+  if (SOLO_PAGE) {
+    netInfo = null;
+    saveJson(sessionStorage, NET_KEY, null);
+  }
+  if (game && savedOnline === SOLO_PAGE) game = null;
 
   // 再読み込みしたら同じ部屋に戻る
   if (netInfo?.role === 'host') Net.host(netInfo.code);

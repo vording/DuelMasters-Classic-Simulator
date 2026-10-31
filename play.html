@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>一人回し・対戦 — DuelMasters Classic Simulator</title>
+  <title>対戦 — DuelMasters Classic Simulator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="play.css?v=15">
-  <link rel="stylesheet" href="skin.css?v=31">
+  <link rel="stylesheet" href="skin.css?v=32">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
-  <script src="news.js?v=2"></script>
+  <script src="news.js?v=3"></script>
   <script src="felt.js?v=2"></script>
   <script src="zoom.js?v=8"></script>
 </head>
@@ -24,7 +24,7 @@
       <h1 class="logo"><span class="logo-mark logo-img" role="img" aria-label="DuelMasters Classic Simulator"></span></h1>
       <nav class="nav">
         <a href="index.html"><b>DECK BUILD</b><small>デッキ作成</small></a>
-        <span class="active"><b>BATTLE</b><small>一人回し・対戦</small></span>
+        <span class="active" id="nav-play"><b>BATTLE</b><small>対戦</small></span>
       </nav>
       <span class="game-title"><span id="deck-name"></span></span>
       <span id="net-status" class="net-status"></span>
@@ -185,9 +185,10 @@
       <label class="field">デッキ <select id="setup-deck"></select></label>
       <fieldset class="order well">
         <legend><b>MODE</b><small>遊び方</small></legend>
-        <label><input type="radio" name="mode" value="solo" checked> 一人回し</label>
-        <label><input type="radio" name="mode" value="host"> ネット対戦：部屋を作る</label>
-        <label><input type="radio" name="mode" value="join"> ネット対戦：部屋に入る
+        <!-- 一人回し（デッキ作成の「一人回し」から開いたとき）と対戦（ネット対戦）で、出す選択肢を分ける -->
+        <label class="mode-solo"><input type="radio" name="mode" value="solo"> 一人回し</label>
+        <label class="mode-net"><input type="radio" name="mode" value="host" checked> ネット対戦：部屋を作る</label>
+        <label class="mode-net"><input type="radio" name="mode" value="join"> ネット対戦：部屋に入る
           <input id="room-code" name="room" type="text" inputmode="numeric" autocomplete="off" placeholder="6桁の数字" maxlength="6" class="room-code"></label>
       </fieldset>
       <fieldset class="order well">
@@ -244,6 +245,6 @@
   <script src="cards.js?v=11"></script>
   <script src="net.js?v=2"></script>
   <script src="effects.js?v=4"></script>
-  <script src="play.js?v=22"></script>
+  <script src="play.js?v=23"></script>
 </body>
 </html>

@@ -856,3 +856,10 @@ html.phone .song-title { top: 42px; right: 6px; font-size: 11px; padding: 3px 9p
   mask: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent);
   mask-composite: intersect;
 }
+
+/* デッキ作成：一人回しと対戦のボタンを横に並べる */
+.play-btns { display: flex; gap: 6px; }
+.play-btns .play-btn { flex: 1; min-width: 0; }
+
+/* 開始画面：一人回しの画面では一人回しだけ、対戦の画面ではネット対戦だけを出す */
+body:not(.solo-page) .setup .mode-solo, body.solo-page .setup .mode-net, body.solo-page #order-note { display: none; }
