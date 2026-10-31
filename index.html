@@ -15,7 +15,7 @@
   <link rel="stylesheet" href="skin.css?v=46">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
-  <script src="news.js?v=13"></script>
+  <script src="news.js?v=14"></script>
   <script src="zoom.js?v=8"></script>
 </head>
 <body>
@@ -167,6 +167,8 @@
       <p id="export-status" class="status import-status"></p>
       <div class="dialog-actions">
         <button type="button" id="export-close">閉じる</button>
+        <!-- カードの画像を画像ファイルに書き込めるとき（公式サイトが許可しているとき）だけ出す -->
+        <button type="button" id="export-image" title="デッキのカードの一覧と QR コードを画像にして保存" hidden>画像で保存</button>
         <button type="button" id="export-copy" title="「4 カード名」の形式">テキストでコピー</button>
         <button type="button" id="export-link" class="primary" title="開くとこのデッキを追加できるリンク。LINE などで送れます">共有リンク</button>
       </div>
@@ -187,11 +189,11 @@
     </form>
   </dialog>
 
-  <script src="sound.js?v=15"></script>
+  <script src="sound.js?v=16"></script>
   <script src="settings.js?v=15"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
   <script src="vendor/qrcode.js?v=1"></script>
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=31"></script>
 </body>
 </html>
