@@ -149,15 +149,68 @@ function toggleHomeEdit() {
   renderHome();
 }
 
-// デッキの並び順を動かす（dir：-1 で前へ、1 で後ろへ）
-function moveDeck(id, dir) {
-  const i = state.decks.findIndex((d) => d.id === id);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= state.decks.length) return;
-  [state.decks[i], state.decks[j]] = [state.decks[j], state.decks[i]];
-  Sound.play('button');
-  save();
-  renderHome();
+// ドラッグでデッキの並び順を変える。PC はタイルのどこでも、スマホは「⠿」をつかんで動かす
+// つかんだタイルは指（マウス）についてきて、元の場所には同じ大きさの空きを置き、空きを入れ替えながら動かす
+function startDeckDrag(e, tile) {
+  if (e.button > 0) return;
+  e.preventDefault();
+  const grid = $('home-decks');
+  const scroller = $('deck-home');
+  const rect = tile.getBoundingClientRect();
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
+  const hole = Object.assign(document.createElement('div'), { className: 'deck-tile-hole' });
+  hole.style.height = `${rect.height}px`;
+  tile.before(hole);
+  tile.classList.add('dragging');
+  Object.assign(tile.style, { position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, zIndex: 50 });
+  let last = { x: e.clientX, y: e.clientY };
+  let scrollTimer = null;
+  // つかんだまま画面の上下の端に近づいたら、デッキ選択をスクロールする
+  const autoScroll = () => {
+    const edge = 70;
+    const v = last.y < edge ? -12 : last.y > innerHeight - edge ? 12 : 0;
+    if (v) {
+      scroller.scrollTop += v;
+      place();
+    }
+    scrollTimer = requestAnimationFrame(autoScroll);
+  };
+  // 指の下のタイルの前か後ろに空きを動かす
+  const place = () => {
+    const under = document.elementFromPoint(last.x, last.y)?.closest('.deck-tile');
+    if (!under || under === tile || !grid.contains(under)) return;
+    const items = [...grid.children];
+    if (items.indexOf(hole) < items.indexOf(under)) under.after(hole);
+    else under.before(hole);
+  };
+  const move = (ev) => {
+    last = { x: ev.clientX, y: ev.clientY };
+    tile.style.left = `${ev.clientX - dx}px`;
+    tile.style.top = `${ev.clientY - dy}px`;
+    place();
+  };
+  const end = () => {
+    removeEventListener('pointermove', move);
+    removeEventListener('pointerup', end);
+    removeEventListener('pointercancel', end);
+    cancelAnimationFrame(scrollTimer);
+    hole.replaceWith(tile);
+    tile.classList.remove('dragging');
+    tile.removeAttribute('style');
+    const order = [...grid.children].map((el) => Number(el.dataset.id));
+    const moved = order.some((id, i) => id !== state.decks[i]?.id);
+    state.decks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    if (moved) {
+      Sound.play('card-add');
+      save();
+    }
+    renderHome();
+  };
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', end);
+  addEventListener('pointercancel', end);
+  scrollTimer = requestAnimationFrame(autoScroll);
 }
 
 function deleteDeckById(id) {
@@ -178,7 +231,7 @@ function renderHome() {
   $('home-edit').classList.toggle('primary', homeEditing);
   $('home-new').disabled = homeEditing;
   $('home-import').disabled = homeEditing;
-  $('home-decks').replaceChildren(...state.decks.map((d, index) => {
+  $('home-decks').replaceChildren(...state.decks.map((d) => {
     const total = deckTotal(d);
     const cards = deckEntries(d).map((e) => e.card);
     const cover = deckCover(d);
@@ -186,8 +239,9 @@ function renderHome() {
     const tile = document.createElement('div');
     tile.className = 'deck-tile';
     tile.tabIndex = 0;
+    tile.dataset.id = d.id;
     tile.innerHTML = '<div class="tile-cover"></div><div class="tile-name"></div><div class="tile-meta"><span class="tile-count"></span><span class="civ-dots"></span></div><div class="tile-actions"></div>';
-    // 編集モードでは、前へ・削除・後ろへ。ふだんは開く・対戦
+    // 編集モードでは、移動（ドラッグ）・削除。ふだんは開く・対戦
     const actions = tile.querySelector('.tile-actions');
     const btn = (text, cls, fn, disabled = false) => {
       const b = Object.assign(document.createElement('button'), { type: 'button', className: cls, textContent: text, disabled });
@@ -198,11 +252,14 @@ function renderHome() {
       return b;
     };
     if (homeEditing) {
-      actions.append(
-        btn('◀', 'tile-move', () => moveDeck(d.id, -1), index === 0),
-        btn('削除', 'tile-delete', () => deleteDeckById(d.id)),
-        btn('▶', 'tile-move', () => moveDeck(d.id, 1), index === state.decks.length - 1),
-      );
+      const handle = Object.assign(document.createElement('span'), { className: 'tile-handle', textContent: '⠿', title: 'ドラッグで並び順を変える' });
+      actions.append(handle, btn('削除', 'tile-delete', () => deleteDeckById(d.id)));
+      tile.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        // スマホ（指）は「⠿」からだけ動かす（ほかの場所はページのスクロール）
+        if (e.pointerType !== 'mouse' && !e.target.closest('.tile-handle')) return;
+        startDeckDrag(e, tile);
+      });
     } else {
       actions.append(btn('開く', 'tile-edit', () => openDeck(d.id)), btn('対戦 ▶', 'tile-play primary', () => Bgm.leave(`play.html?deck=${d.id}`)));
     }

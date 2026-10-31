@@ -122,6 +122,15 @@ const Bgm = (() => {
   const XFADE = 3;
   // 曲の頭を削る秒数（ループしても、この部分は流さない）
   const SKIP = { ready: 1 };
+  // 曲の大きさをそろえる：曲ごとの音の大きさ（LUFS。ffmpeg の ebur128 で測った値）を、いちばん小さい曲（TARGET）に合わせて下げる
+  // 曲を足したら、ffmpeg -i bgm/<名前>.mp3 -af ebur128 -f null - の Integrated loudness を書き足す（書いていない曲はそのまま）
+  const TARGET = -12;
+  const LOUDNESS = {
+    select: -9.7, edit: -10.1, ready: -9.0,
+    battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2,
+    'battle-watering': -10.2, 'solo-re-roots': -10.2,
+  };
+  const trackGain = (name) => (name in LOUDNESS ? Math.min(1, 10 ** ((TARGET - LOUDNESS[name]) / 20)) : 1);
   let on = true;
   let volume = 0.35;
   try {
@@ -172,6 +181,7 @@ const Bgm = (() => {
 
   // Web Audio：無音を除いた区間をくり返す。1周ごとに新しく流し、前の周の終わり XFADE 秒と重ねてつなぐ
   function webPlayer(name, { buffer, start, end }) {
+    const k = trackGain(name);
     const c = getCtx();
     const gain = c.createGain();
     gain.gain.value = 0;
@@ -211,6 +221,7 @@ const Bgm = (() => {
     return {
       name,
       ramp(to, ms) {
+        to *= k;
         const t = c.currentTime;
         gain.gain.cancelScheduledValues(t);
         gain.gain.setValueAtTime(gain.gain.value, t);
@@ -236,6 +247,7 @@ const Bgm = (() => {
 
   // 読めなかったとき：ふつうの <audio> のループ（音量は少しずつ変える）
   function elementPlayer(name) {
+    const k = trackGain(name);
     const a = new Audio(`bgm/${name}.mp3`);
     const skip = SKIP[name] ?? 0;
     a.volume = 0;
@@ -252,6 +264,7 @@ const Bgm = (() => {
     return {
       name,
       ramp(to, ms) {
+        to *= k;
         clearInterval(timer);
         const from = a.volume;
         const t0 = performance.now();
