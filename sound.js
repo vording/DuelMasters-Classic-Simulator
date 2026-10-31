@@ -3,6 +3,8 @@
 // 音の名前と鳴る場面は README の「効果音」の表を参照
 const Sound = (() => {
   const KEY = 'dm-deckmaker-sound';
+  // CPU 対戦の CPU 側（見えない iframe）は音を出さない
+  const MUTED = new URLSearchParams(location.search).has('cpu');
   const VOLUME_KEY = 'dm-deckmaker-volume';
   // 主音量（効果音と BGM の両方にかける）
   const MASTER_KEY = 'dm-deckmaker-master';
@@ -54,7 +56,7 @@ const Sound = (() => {
   }
 
   function play(name) {
-    if (!on || !NAMES.includes(name)) return;
+    if (!on || MUTED || !NAMES.includes(name)) return;
     const now = performance.now();
     if (now - (lastPlayed[name] ?? -Infinity) < GAP) return;
     lastPlayed[name] = now;
@@ -121,6 +123,8 @@ const Sound = (() => {
 // ・曲を変えるときは、今の曲をフェードアウトしながら次の曲をフェードインする
 // ・オン・オフと音量はこのブラウザに記憶する。ブラウザが自動再生を止めたら、画面に最初に触れたときに流す
 // ・タブが見えていない間は止める（同じPCの2つのタブで対戦しても重ならない）
+// CPU 対戦の CPU 側（見えない iframe）は BGM を流さない
+const CPU_MUTED = new URLSearchParams(location.search).has('cpu');
 const Bgm = (() => {
   const KEY = 'dm-deckmaker-bgm';
   const VOLUME_KEY = 'dm-deckmaker-bgm-volume';
@@ -310,7 +314,7 @@ const Bgm = (() => {
   }
 
   async function start() {
-    if (!on || !track || document.hidden) return;
+    if (!on || !track || document.hidden || CPU_MUTED) return;
     if (current?.name === track) return current.resume();
     const name = track;
     const token = ++seq;

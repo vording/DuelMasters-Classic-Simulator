@@ -5,16 +5,22 @@
 // 攻撃は1回ずつ：攻撃側が「attack」を送り、守る側がブロックを選んで「attackReply」を返し、
 // 攻撃側がバトル・ブレイクの結果を「combat」で送る（守る側がシールドを手札に加え、S・トリガーを選ぶ）。
 
-const GAME_KEY = 'dm-deckmaker-game';
-const NET_KEY = 'dm-deckmaker-net';
-const CHAT_KEY = 'dm-deckmaker-chat';
+// CPU 対戦の CPU 側（対戦の画面の中に見えない iframe で開く play.html?cpu=強さ&room=部屋&deck=デッキ）。
+// 対戦の仕組みはネット対戦と同じで、同じページの中の BroadcastChannel でつなぐ。操作は cpu.js が決める
+const CPU_PARAMS = new URLSearchParams(location.search);
+const CPU_MODE = CPU_PARAMS.has('cpu');
+const CPU_LEVELS = { 1: '弱い', 2: '普通', 3: '強い' };
+// 保存する場所（CPU 側は別の名前にして、同じタブの人のゲームと混ざらないようにする）
+const GAME_KEY = CPU_MODE ? 'dm-deckmaker-cpu-game' : 'dm-deckmaker-game';
+const NET_KEY = CPU_MODE ? 'dm-deckmaker-cpu-net' : 'dm-deckmaker-net';
+const CHAT_KEY = CPU_MODE ? 'dm-deckmaker-cpu-chat' : 'dm-deckmaker-chat';
 const HISTORY_LIMIT = 200;
 const CHARGES_PER_TURN = 1;
 
 // 名前・アバターは設定画面（settings.js）で決める
 const { avatarImage, validAvatar } = Settings;
-const myName = Settings.name;
-const myAvatar = Settings.avatar;
+const myName = CPU_MODE ? () => `CPU（${CPU_LEVELS[CPU_PARAMS.get('cpu')] ?? '普通'}）` : Settings.name;
+const myAvatar = CPU_MODE ? () => '13' : Settings.avatar;
 
 const PHASES = [
   ['start', 'ターン開始'],
@@ -132,7 +138,8 @@ const inProgress = () => !!game && !game.result;
 const LEAVE_TEXT = '対戦画面から戻ると、今のゲームは終了します（最初からやり直しになります）。戻りますか？';
 
 function clearSavedGame() {
-  for (const key of [GAME_KEY, NET_KEY, CHAT_KEY]) {
+  // CPU 対戦の CPU 側の保存も消す
+  for (const key of [GAME_KEY, NET_KEY, CHAT_KEY, 'dm-deckmaker-cpu-game', 'dm-deckmaker-cpu-net', 'dm-deckmaker-cpu-chat']) {
     try { sessionStorage.removeItem(key); } catch {}
   }
 }
@@ -1948,8 +1955,11 @@ function renderMatching() {
   if (!show) return;
   const host = Net.role === 'host';
   const found = !!opp?.connected && Net.connected();
+  const cpu = !!netInfo?.cpu;
   $('matching').classList.toggle('found', found);
-  $('matching-sub').textContent = found ? '対戦相手が見つかりました' : host ? '対戦相手を待っています' : '部屋に接続しています';
+  $('matching-sub').textContent = found ? '対戦相手が見つかりました' : cpu ? 'CPU を準備しています' : host ? '対戦相手を待っています' : '部屋に接続しています';
+  // CPU 対戦では部屋コードを出さない
+  $('room-banner').hidden = cpu;
   $('matching-my-avatar').style.backgroundImage = avatarImage(myAvatar());
   $('matching-my-name').textContent = myName();
   $('matching-opp-avatar').style.backgroundImage = found ? avatarImage(validAvatar(opp?.avatar)) : 'none';
@@ -1957,7 +1967,7 @@ function renderMatching() {
   $('room-code-big').textContent = Net.code ?? '';
   $('room-note').textContent = host ? 'このコードを相手に伝えてください' : 'この部屋に入ります';
   $('room-share').hidden = !host;
-  $('matching-status').textContent = found ? 'まもなく対戦を始めます…' : $('net-status').textContent;
+  $('matching-status').textContent = found ? 'まもなく対戦を始めます…' : cpu ? '' : $('net-status').textContent;
 }
 
 // 相手に見せるカード（効果で得ている能力・パワーを足しておく）
@@ -2285,15 +2295,22 @@ function closeViewer() {
 const deckSize = (d) => Object.entries(d.cards).reduce((n, [cid, qty]) => n + (cardData[cid] ? qty : 0), 0);
 
 function openSetup() {
+  // CPU 側は開始画面を使わない（次の対戦では、人の側が新しい CPU を用意する）
+  if (CPU_MODE) return;
   // 一人回しは開始画面を出さずに、すぐ始める
   if (SOLO_PAGE) return startSolo();
   const select = $('setup-deck');
   select.replaceChildren(...decks.map((d) => new Option(`${d.name}（${deckSize(d)}枚）`, d.id)));
+  // CPU のデッキ：おまかせ（デッキからランダム）か、デッキを選ぶ
+  const cpuSelect = $('cpu-deck');
+  const cpuValue = cpuSelect.value || 'random';
+  cpuSelect.replaceChildren(new Option('おまかせ', 'random'), ...decks.map((d) => new Option(`${d.name}（${deckSize(d)}枚）`, d.id)));
+  cpuSelect.value = cpuValue;
   const requested = Number(new URLSearchParams(location.search).get('deck'));
   select.value = String(requested || game?.deckId || decks[0]?.id || '');
   $('setup-error').textContent = decks.length ? '' : 'デッキがありません。デッキ作成画面で作ってください。';
   renderSetupPlayer();
-  const mode = SOLO_PAGE ? 'solo' : netInfo?.role === 'guest' ? 'join' : 'host';
+  const mode = SOLO_PAGE ? 'solo' : netInfo?.cpu ? 'cpu' : netInfo?.role === 'guest' ? 'join' : 'host';
   $('setup-form').elements.mode.value = mode;
   $('room-code').value = netInfo?.role === 'guest' ? netInfo.code : '';
   updateSetupMode();
@@ -2322,6 +2339,7 @@ function startSolo() {
 function updateSetupMode() {
   const mode = $('setup-form').elements.mode.value;
   $('room-code').disabled = mode !== 'join';
+  $('cpu-options').hidden = mode !== 'cpu';
   for (const r of $('setup-form').elements.order) r.disabled = mode === 'join';
   $('order-note').hidden = mode !== 'join';
 }
@@ -2355,6 +2373,18 @@ function startFromSetup(e) {
     chat = [];
     netInfo = { role: 'host', code: Net.host() };
     systemMessage(`部屋 ${netInfo.code} を作りました。この部屋コードを相手に伝えてください`);
+  } else if (mode === 'cpu') {
+    // CPU 対戦：毎回、新しい CPU を同じページの中に用意して、BroadcastChannel でつなぐ
+    Net.stop();
+    opp = null;
+    chat = [];
+    const level = Number(form.get('cpu-level')) || 2;
+    const picked = form.get('cpu-deck');
+    const usable = decks.filter((d) => deckSize(d) > DM.SHIELDS + DM.HAND);
+    const cpuDeck = picked === 'random' ? usable[Math.floor(Math.random() * usable.length)]?.id ?? deck.id : Number(picked) || deck.id;
+    const room = `cpu-${Math.random().toString(36).slice(2, 10)}`;
+    netInfo = { role: 'host', code: Net.host(room, { local: true }), cpu: { level, deck: cpuDeck } };
+    spawnCpu(netInfo, true);
   } else if (mode === 'join' && !(Net.role === 'guest' && Net.code === code)) {
     Net.stop();
     opp = null;
@@ -2372,6 +2402,34 @@ function startFromSetup(e) {
   const onDraw = random ? Math.random() < 0.5 : order === 'draw';
   $('setup').close();
   newGame(deck, onDraw, random && mode !== 'join');
+}
+
+// ---------- CPU 対戦 ----------
+
+// CPU を見えない iframe で開く（fresh：新しい対戦。false なら再読み込みしたときの続き）
+function spawnCpu(info, fresh) {
+  document.getElementById('cpu-frame')?.remove();
+  const frame = document.createElement('iframe');
+  frame.id = 'cpu-frame';
+  frame.className = 'cpu-frame';
+  frame.setAttribute('aria-hidden', 'true');
+  frame.tabIndex = -1;
+  frame.src = `play.html?cpu=${info.cpu.level}&room=${encodeURIComponent(info.code)}&deck=${info.cpu.deck}${fresh ? '&fresh=1' : ''}`;
+  document.body.append(frame);
+}
+
+// CPU 側：部屋に入ってゲームを始める（先攻・後攻は人の側が決める）
+function cpuJoin() {
+  const deck = decks.find((d) => d.id === Number(CPU_PARAMS.get('deck'))) ?? decks.find((d) => deckSize(d) > DM.SHIELDS + DM.HAND);
+  if (!deck) return;
+  const room = CPU_PARAMS.get('room');
+  opp = null;
+  chat = [];
+  pendingHost = null;
+  earlyPass = null;
+  netInfo = { role: 'guest', code: Net.join(room, { local: true }), cpu: true };
+  saveJson(sessionStorage, NET_KEY, netInfo);
+  newGame(deck, false, false);
 }
 
 // ---------- 初期化 ----------
@@ -2485,6 +2543,18 @@ function init() {
   if (game) Bgm.preload(battleBgm().file);
 
   // 対戦画面に来たら最初から（再読み込みのときだけ、途中のゲーム・部屋の続きから）
+  // CPU 側：新しい対戦なら最初から部屋に入る。そうでなければ（人の側が再読み込みした）保存してある続きから
+  if (CPU_MODE) {
+    if (CPU_PARAMS.has('fresh') || !game || !netInfo) {
+      clearSavedGame();
+      game = null;
+      cpuJoin();
+    } else {
+      Net.join(netInfo.code, { local: true });
+    }
+    if (game) render();
+    return;
+  }
   setupLeaveGuard();
   const reloaded = performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
   if (!reloaded) {
@@ -2502,8 +2572,11 @@ function init() {
   }
   if (game && savedOnline === SOLO_PAGE) game = null;
 
-  // 再読み込みしたら同じ部屋に戻る
-  if (netInfo?.role === 'host') Net.host(netInfo.code);
+  // 再読み込みしたら同じ部屋に戻る（CPU 対戦なら CPU も用意し直す）
+  if (netInfo?.cpu) {
+    Net.host(netInfo.code, { local: true });
+    spawnCpu(netInfo, false);
+  } else if (netInfo?.role === 'host') Net.host(netInfo.code);
   else if (netInfo?.role === 'guest') Net.join(netInfo.code);
 
   const requested = Number(new URLSearchParams(location.search).get('deck'));
