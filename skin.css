@@ -886,5 +886,3 @@ html.phone .gallery-bgm { grid-template-columns: 1fr 1fr; }
 /* 歯車は設定画面へのリンク */
 a.settings-btn { display: block; flex: none; }
 
-/* 設定画面の上：左に戻る、右にタイトルに戻る */
-.settings-bar { justify-content: space-between; gap: 8px; }
