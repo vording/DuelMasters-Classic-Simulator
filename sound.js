@@ -93,8 +93,7 @@ const Sound = (() => {
   // （長押しの詳細表示は頻繁なので鳴らさない。勝敗のダイアログは win / lose が鳴るので鳴らさない）
   document.addEventListener('click', (e) => {
     const el = e.target.closest?.('button, a[href], .deck-tile, [data-phone-tab], [data-phone-sheet]');
-    // data-no-click-sound：ボタンの音を鳴らさない（ギャラリーの効果音のボタン）
-    if (!el || el.disabled || el.closest('.card-detail.peek') || el.hasAttribute('data-no-click-sound')) return;
+    if (!el || el.disabled || el.closest('.card-detail.peek')) return;
     play('button');
   }, true);
   const quiet = (dlg) => dlg.id === 'result' || dlg.classList.contains('peek');

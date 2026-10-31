@@ -108,16 +108,6 @@ const Settings = (() => {
   const $ = (id) => document.getElementById(id);
   const status = (t) => { if ($('settings-status')) $('settings-status').textContent = t; };
 
-  // 効果音の名前と、鳴る場面（ギャラリーに出す）
-  const SE_LABELS = {
-    draw: 'カードを引く', shuffle: 'シャッフル', tap: 'タップ', untap: 'アンタップ',
-    summon: '召喚', evolve: '進化', spell: '呪文', trigger: 'S・トリガー', field: 'クリーチャー以外を出す',
-    'mana-light': 'マナ（光）', 'mana-water': 'マナ（水）', 'mana-dark': 'マナ（闇）', 'mana-fire': 'マナ（火）', 'mana-nature': 'マナ（自然）', 'mana-multi': 'マナ（多色）',
-    attack: '攻撃', attacked: '攻撃された', block: 'ブロック', break: 'ブレイク', destroy: '破壊', discard: '墓地へ',
-    phase: 'フェイズ', myturn: '自分のターン', endturn: 'ターン終了', win: '勝利', lose: '敗北',
-    button: 'ボタン', cancel: '取り消し', open: '開く', close: '閉じる', 'card-add': 'カードを入れる', 'card-remove': 'カードを抜く', page: '画面の切り替え',
-  };
-
   // 設定画面から戻る先（来た画面）。index.html・play.html だけ
   function backUrl() {
     const back = new URLSearchParams(location.search).get('back') ?? '';
@@ -165,7 +155,6 @@ const Settings = (() => {
             </fieldset>
             <fieldset class="settings-group well">
               <legend><b>GALLERY</b><small>ギャラリー</small></legend>
-              <p class="note">BGM と効果音を聞けます。</p>
               <div class="settings-row"><button type="button" id="open-gallery" class="primary">ギャラリーを開く ▶</button></div>
             </fieldset>
             <fieldset class="settings-group well">
@@ -184,12 +173,8 @@ const Settings = (() => {
           <h2 class="panel-head"><b>GALLERY</b><small>ギャラリー</small></h2>
           <div class="dialog-body">
             <fieldset class="settings-group well">
-              <legend><b>BGM</b><small>押すと流れる・もう一度押すと止まる</small></legend>
+              <legend><b>BGM</b></legend>
               <div id="gallery-bgm" class="gallery-bgm"></div>
-            </fieldset>
-            <fieldset class="settings-group well">
-              <legend><b>SE</b><small>効果音。押すと鳴る</small></legend>
-              <div id="gallery-se" class="gallery-se"></div>
             </fieldset>
             <p id="gallery-note" class="note"></p>
           </div>
@@ -273,12 +258,12 @@ const Settings = (() => {
     scrollTo(0, 0);
   }
 
-  // ギャラリー：BGM（押すとその曲に切り替わる）と効果音（押すと鳴る）
+  // ギャラリー：BGM（押すとその曲が流れ、もう一度押すと止まる）
   function buildGallery() {
     $('gallery-bgm').replaceChildren(...Bgm.TRACKS.map((t) => {
       const b = Object.assign(document.createElement('button'), { type: 'button', className: 'gallery-track' });
       b.dataset.track = t.file;
-      b.append(Object.assign(document.createElement('b'), { textContent: `♪ ${t.title}` }), Object.assign(document.createElement('small'), { textContent: t.scene }));
+      b.append(Object.assign(document.createElement('b'), { textContent: `♪ ${t.title}` }));
       // もう一度押すと止める
       b.addEventListener('click', () => {
         if (Bgm.track === t.file) Bgm.stop();
@@ -287,20 +272,12 @@ const Settings = (() => {
       });
       return b;
     }));
-    $('gallery-se').replaceChildren(...Sound.NAMES.map((name) => {
-      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'gallery-se-btn', textContent: SE_LABELS[name] ?? name, title: name });
-      // 押したときのボタンの音は鳴らさず、その効果音だけを鳴らす
-      b.dataset.noClickSound = '';
-      b.addEventListener('click', () => Sound.play(name));
-      return b;
-    }));
     renderGallery();
   }
 
   function renderGallery() {
     for (const b of document.querySelectorAll('.gallery-track')) b.setAttribute('aria-pressed', String(b.dataset.track === Bgm.track));
-    const off = [!Bgm.on && 'BGM', !Sound.on && '効果音'].filter(Boolean);
-    $('gallery-note').textContent = off.length ? `${off.join('と')}はオフになっています（サウンドでオンにすると聞けます）` : '';
+    $('gallery-note').textContent = Bgm.on ? '' : 'BGM はオフになっています（サウンドでオンにすると聞けます）';
   }
 
   // ほかの画面：上のバーに歯車（設定画面へのリンク）を置く。戻ったら来た画面に戻れるよう、今の画面を渡す
