@@ -315,9 +315,9 @@ const Bgm = (() => {
     const token = ++seq;
     const data = await loadBuffer(name);
     if (token !== seq || !on || track !== name) return;
-    current?.stop(FADE_OUT);
+    current?.stop(fade ? FADE_OUT : 0);
     current = data ? webPlayer(name, data) : elementPlayer(name);
-    current.ramp(volume, FADE_IN);
+    current.ramp(volume, fade ? FADE_IN : 0);
     current.resume();
   }
 
@@ -336,9 +336,12 @@ const Bgm = (() => {
     addEventListener('keydown', go, true);
   }
 
-  function play(name) {
+  // fade：false なら、今の曲をすぐ止めて次の曲をすぐ最大の音量で流す（ギャラリー）
+  let fade = true;
+  function play(name, { fade: useFade = true } = {}) {
     if (track === name && current?.name === name) return;
     track = name;
+    fade = useFade;
     start();
   }
 
@@ -399,10 +402,10 @@ const Bgm = (() => {
   });
 
   // 曲を止める（オン・オフの設定は変えない。ギャラリーなど）
-  function stop() {
+  function stop({ fade: useFade = true } = {}) {
     track = null;
     seq++;
-    current?.stop(400);
+    current?.stop(useFade ? 400 : 0);
     current = null;
   }
 
