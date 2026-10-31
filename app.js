@@ -683,6 +683,10 @@ function init() {
   $('deck-rename').addEventListener('click', renameDeck);
   $('deck-copy').addEventListener('click', copyDeck);
   $('deck-delete').addEventListener('click', deleteDeck);
+  // 一人回しはデッキ作成からだけ開ける（play.html?mode=solo）。対戦はネット対戦
+  $('deck-solo').addEventListener('click', () => {
+    Bgm.leave(`play.html?mode=solo&deck=${activeDeck().id}`);
+  });
   $('deck-play').addEventListener('click', () => {
     Bgm.leave(`play.html?deck=${activeDeck().id}`);
   });
