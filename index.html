@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=33">
+  <link rel="stylesheet" href="skin.css?v=34">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
   <script src="news.js?v=6"></script>
@@ -148,13 +148,15 @@
 
   <!-- エクスポート：デッキのカードの一覧と、インポート用の QR コード（共有リンク）。テキストでコピー・共有リンクを選べる -->
   <dialog id="export-dialog" class="export-dialog">
-    <h2 class="panel-head"><b>EXPORT</b><small id="export-title">デッキ</small></h2>
+    <h2 class="panel-head"><b>EXPORT</b><small>エクスポート</small></h2>
     <div class="dialog-body">
+      <p id="export-title" class="export-deck-name"></p>
       <div class="export-main">
-        <div id="export-cards" class="export-cards"></div>
-        <div class="export-qr-box">
+        <!-- キーカードのイラスト（ふちをぼかす）に、QR コードを重ねる（PC は左下、スマホは右上） -->
+        <div id="export-key" class="export-key">
           <div id="export-qr" class="export-qr" title="読み取ると、このデッキを追加できます"></div>
         </div>
+        <div id="export-cards" class="export-cards"></div>
       </div>
       <!-- コピーできなかったときだけ、テキスト・リンクをここに出す（長押しでコピー） -->
       <textarea id="export-text" rows="6" spellcheck="false" hidden></textarea>
@@ -186,6 +188,6 @@
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
   <script src="vendor/qrcode.js?v=1"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

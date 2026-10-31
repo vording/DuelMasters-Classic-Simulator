@@ -303,6 +303,10 @@ async function openExport() {
     return item;
   }));
   $('export-qr').replaceChildren();
+  // キーカード（未設定なら表紙と同じカード）のイラスト
+  const cover = deckCover(deck);
+  $('export-key').querySelector('.cover-art, .dm-face')?.remove();
+  if (cover) $('export-key').prepend(coverArt(cover));
   $('export-dialog').showModal();
   // QR コード：読み込むとデッキを追加できる共有リンク
   const url = await deckLink(deck);
