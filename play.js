@@ -2251,6 +2251,8 @@ function closeViewer() {
 const deckSize = (d) => Object.entries(d.cards).reduce((n, [cid, qty]) => n + (cardData[cid] ? qty : 0), 0);
 
 function openSetup() {
+  // 一人回しは開始画面を出さずに、すぐ始める
+  if (SOLO_PAGE) return startSolo();
   const select = $('setup-deck');
   select.replaceChildren(...decks.map((d) => new Option(`${d.name}（${deckSize(d)}枚）`, d.id)));
   const requested = Number(new URLSearchParams(location.search).get('deck'));
@@ -2263,6 +2265,24 @@ function openSetup() {
   updateSetupMode();
   $('setup').showModal();
   updateBgm();
+}
+
+// 一人回し：開始画面を使わずに、選んでいたデッキ（URL の deck）で始める。先攻・後攻はランダム
+function startSolo() {
+  const form = $('setup-form');
+  const requested = Number(new URLSearchParams(location.search).get('deck'));
+  const id = requested || game?.deckId || decks[0]?.id;
+  $('setup-deck').replaceChildren(...decks.map((d) => new Option(d.name, d.id)));
+  $('setup-deck').value = String(id ?? '');
+  form.elements.mode.value = 'solo';
+  form.elements.order.value = 'random';
+  $('setup-error').textContent = decks.length ? '' : 'デッキがありません。デッキ作成画面で作ってください。';
+  startFromSetup({ preventDefault() {} });
+  // デッキがない・枚数が足りないときは、デッキ作成に戻る
+  if (!game) {
+    alert($('setup-error').textContent || 'デッキを選べませんでした。');
+    location.href = 'index.html';
+  }
 }
 
 function updateSetupMode() {
@@ -2359,7 +2379,11 @@ function init() {
   $('next-phase').addEventListener('click', nextPhase);
   $('end-turn').addEventListener('click', endTurn);
   $('undo').addEventListener('click', undo);
-  $('restart').addEventListener('click', openSetup);
+  // リスタート：一人回しは確認してすぐやり直す。対戦は開始画面を開く
+  $('restart').addEventListener('click', () => {
+    if (SOLO_PAGE && inProgress() && !confirm('最初からやり直しますか？')) return;
+    openSetup();
+  });
 
   $('tools').addEventListener('click', (e) => {
     if (phone() && e.target.closest('button')) window.setPhoneSheet?.('');
@@ -2392,6 +2416,7 @@ function init() {
   renderAvatars();
   // 勝敗の画面を閉じたら、毎回対戦準備画面に戻る
   $('result-again').addEventListener('click', () => $('result').close());
+  if (SOLO_PAGE) $('result-again').textContent = 'もう一度';
   $('result').addEventListener('close', () => { if (currentResult() && !$('setup').open) openSetup(); });
   for (const r of $('setup-form').elements.mode) r.addEventListener('change', updateSetupMode);
   $('chat-form').addEventListener('submit', sendChat);
