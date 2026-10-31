@@ -140,8 +140,97 @@ function toggleKeyCard(card) {
 }
 
 // デッキ選択：デッキごとのタイル（表紙＝キーカード、名前、枚数、文明）
+// デッキ選択の編集モード（並び替え・削除）
+let homeEditing = false;
+
+function toggleHomeEdit() {
+  homeEditing = !homeEditing;
+  Sound.play('button');
+  renderHome();
+}
+
+// ドラッグでデッキの並び順を変える。PC はタイルのどこでも、スマホは「⠿」をつかんで動かす
+// つかんだタイルは指（マウス）についてきて、元の場所には同じ大きさの空きを置き、空きを入れ替えながら動かす
+function startDeckDrag(e, tile) {
+  if (e.button > 0) return;
+  e.preventDefault();
+  const grid = $('home-decks');
+  const scroller = $('deck-home');
+  const rect = tile.getBoundingClientRect();
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
+  const hole = Object.assign(document.createElement('div'), { className: 'deck-tile-hole' });
+  hole.style.height = `${rect.height}px`;
+  tile.before(hole);
+  tile.classList.add('dragging');
+  Object.assign(tile.style, { position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, zIndex: 50 });
+  let last = { x: e.clientX, y: e.clientY };
+  let scrollTimer = null;
+  // つかんだまま画面の上下の端に近づいたら、デッキ選択をスクロールする
+  const autoScroll = () => {
+    const edge = 70;
+    const v = last.y < edge ? -12 : last.y > innerHeight - edge ? 12 : 0;
+    if (v) {
+      scroller.scrollTop += v;
+      place();
+    }
+    scrollTimer = requestAnimationFrame(autoScroll);
+  };
+  // 指の下のタイルの前か後ろに空きを動かす
+  const place = () => {
+    const under = document.elementFromPoint(last.x, last.y)?.closest('.deck-tile');
+    if (!under || under === tile || !grid.contains(under)) return;
+    const items = [...grid.children];
+    if (items.indexOf(hole) < items.indexOf(under)) under.after(hole);
+    else under.before(hole);
+  };
+  const move = (ev) => {
+    last = { x: ev.clientX, y: ev.clientY };
+    tile.style.left = `${ev.clientX - dx}px`;
+    tile.style.top = `${ev.clientY - dy}px`;
+    place();
+  };
+  const end = () => {
+    removeEventListener('pointermove', move);
+    removeEventListener('pointerup', end);
+    removeEventListener('pointercancel', end);
+    cancelAnimationFrame(scrollTimer);
+    hole.replaceWith(tile);
+    tile.classList.remove('dragging');
+    tile.removeAttribute('style');
+    const order = [...grid.children].map((el) => Number(el.dataset.id));
+    const moved = order.some((id, i) => id !== state.decks[i]?.id);
+    state.decks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    if (moved) {
+      Sound.play('card-add');
+      save();
+    }
+    renderHome();
+  };
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', end);
+  addEventListener('pointercancel', end);
+  scrollTimer = requestAnimationFrame(autoScroll);
+}
+
+function deleteDeckById(id) {
+  const deck = state.decks.find((d) => d.id === id);
+  if (!deck || !confirm(`「${deck.name}」を削除しますか？`)) return;
+  state.decks = state.decks.filter((d) => d !== deck);
+  if (!state.decks.length) state.decks.push({ id: 1, name: 'デッキ1', cards: {} });
+  if (!state.decks.some((d) => d.id === state.current)) state.current = state.decks[0].id;
+  Sound.play('card-remove');
+  save();
+  renderHome();
+}
+
 function renderHome() {
   $('home-count').textContent = `${state.decks.length}個`;
+  $('deck-home').classList.toggle('editing', homeEditing);
+  $('home-edit').textContent = homeEditing ? '完了' : '編集';
+  $('home-edit').classList.toggle('primary', homeEditing);
+  $('home-new').disabled = homeEditing;
+  $('home-import').disabled = homeEditing;
   $('home-decks').replaceChildren(...state.decks.map((d) => {
     const total = deckTotal(d);
     const cards = deckEntries(d).map((e) => e.card);
@@ -150,18 +239,39 @@ function renderHome() {
     const tile = document.createElement('div');
     tile.className = 'deck-tile';
     tile.tabIndex = 0;
-    tile.innerHTML = '<div class="tile-cover"></div><div class="tile-name"></div><div class="tile-meta"><span class="tile-count"></span><span class="civ-dots"></span></div><div class="tile-actions"><button type="button" class="tile-edit">編集</button><button type="button" class="tile-play primary">対戦 ▶</button></div>';
+    tile.dataset.id = d.id;
+    tile.innerHTML = '<div class="tile-cover"></div><div class="tile-name"></div><div class="tile-meta"><span class="tile-count"></span><span class="civ-dots"></span></div><div class="tile-actions"></div>';
+    // 編集モードでは、移動（ドラッグ）・削除。ふだんは開く・対戦
+    const actions = tile.querySelector('.tile-actions');
+    const btn = (text, cls, fn, disabled = false) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: cls, textContent: text, disabled });
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fn();
+      });
+      return b;
+    };
+    if (homeEditing) {
+      const handle = Object.assign(document.createElement('span'), { className: 'tile-handle', textContent: '⠿', title: 'ドラッグで並び順を変える' });
+      actions.append(handle, btn('削除', 'tile-delete', () => deleteDeckById(d.id)));
+      tile.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        // スマホ（指）は「⠿」からだけ動かす（ほかの場所はページのスクロール）
+        if (e.pointerType !== 'mouse' && !e.target.closest('.tile-handle')) return;
+        startDeckDrag(e, tile);
+      });
+    } else {
+      actions.append(btn('開く', 'tile-edit', () => openDeck(d.id)), btn('対戦 ▶', 'tile-play primary', () => Bgm.leave(`play.html?deck=${d.id}`)));
+    }
     tile.querySelector('.tile-cover').append(cover ? coverArt(cover) : Object.assign(document.createElement('span'), { className: 'tile-empty', textContent: 'カードなし' }));
     tile.querySelector('.tile-name').textContent = d.name;
     const count = tile.querySelector('.tile-count');
     count.textContent = `${total} / ${DM.DECK_SIZE}`;
     count.classList.toggle('ok', total === DM.DECK_SIZE);
     tile.querySelector('.civ-dots').replaceChildren(...civs.map((c) => Object.assign(document.createElement('i'), { className: `civ-dot civ-${c.cls}`, title: c.name })));
-    tile.addEventListener('click', (e) => {
-      if (e.target.closest('.tile-play')) Bgm.leave(`play.html?deck=${d.id}`);
-      else openDeck(d.id);
-    });
-    tile.addEventListener('keydown', (e) => { if (e.key === 'Enter') openDeck(d.id); });
+    // タイルを押すと開く（編集モードでは開かない）
+    tile.addEventListener('click', () => { if (!homeEditing) openDeck(d.id); });
+    tile.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !homeEditing) openDeck(d.id); });
     return tile;
   }));
 }
@@ -716,6 +826,7 @@ function init() {
   $('deck-back').addEventListener('click', goHome);
   $('home-new').addEventListener('click', createDeck);
   $('home-import').addEventListener('click', openImport);
+  $('home-edit').addEventListener('click', toggleHomeEdit);
   // 画面が変わるときは、ワイプで覆ってから切り替える
   // （# を変えると popstate と hashchange の両方が起きるので、1回だけ）
   window.addEventListener('hashchange', () => {

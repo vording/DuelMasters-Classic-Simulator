@@ -34,50 +34,10 @@ body, button, input, select, textarea { font-family: var(--font-ui); }
 body { font-weight: 500; color: var(--ink); }
 .app { position: relative; z-index: 1; background: transparent; }
 
-/* 背景の動くオブジェクト（HTML の .fx）。画面全体に固定し、パネルの後ろで動かす */
+/* 背景の動くオブジェクト（HTML の .fx）：文明のアイコンだけ。画面全体に固定し、パネルの後ろで動かす */
 .fx { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; contain: strict; }
 .fx > i { position: absolute; display: block; will-change: transform; }
-.fx-ring {
-  right: -20vmin;
-  bottom: -28vmin;
-  width: 96vmin;
-  height: 96vmin;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none'%3E%3Ccircle cx='100' cy='100' r='96' stroke='%23c8ff2e' stroke-width='1.2' stroke-dasharray='2 6' opacity='.6'/%3E%3Ccircle cx='100' cy='100' r='84' stroke='%2339d0ff' stroke-width='5' stroke-dasharray='60 18 8 18' opacity='.3'/%3E%3Ccircle cx='100' cy='100' r='66' stroke='%23ffffff' stroke-width='.8' opacity='.2'/%3E%3Ccircle cx='100' cy='100' r='58' stroke='%23c8ff2e' stroke-width='2' stroke-dasharray='1 3' opacity='.45'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat;
-  animation: spin 80s linear infinite;
-}
-.fx-ring.r2 {
-  right: 3vmin;
-  bottom: -5vmin;
-  width: 48vmin;
-  height: 48vmin;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cg fill='none'%3E%3Ccircle cx='100' cy='100' r='94' stroke='%2339d0ff' stroke-width='3' stroke-dasharray='30 10' opacity='.45'/%3E%3Ccircle cx='100' cy='100' r='76' stroke='%23c8ff2e' stroke-width='1' opacity='.4'/%3E%3Cpath d='M100 6 L106 18 L94 18 Z' fill='%23c8ff2e' opacity='.8'/%3E%3C/g%3E%3C/svg%3E");
-  animation: spin 30s linear infinite reverse;
-}
-.fx-dots {
-  left: -8vmin;
-  top: -8vmin;
-  width: 60vmin;
-  height: 60vmin;
-  background: radial-gradient(circle, rgba(57, 208, 255, .45) 0 34%, transparent 36%) 0 0 / 22px 22px;
-  -webkit-mask: radial-gradient(circle at 30% 30%, #000 0 20%, transparent 68%);
-  mask: radial-gradient(circle at 30% 30%, #000 0 20%, transparent 68%);
-  animation: float 14s ease-in-out infinite alternate;
-}
-/* 右から左へ流れる線：幅2倍の帯を横にずらし続ける */
-.fx-stripes {
-  left: 0;
-  top: 40%;
-  width: 200%;
-  height: 16vmin;
-  background: repeating-linear-gradient(90deg, transparent 0 60px, rgba(200, 255, 46, .14) 60px 64px, transparent 64px 140px, rgba(57, 208, 255, .12) 140px 220px);
-  -webkit-mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
-  mask: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
-  animation: slide 16s linear infinite;
-}
-
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes float { to { transform: translate(4vmin, 3vmin); } }
-@keyframes slide { from { transform: skewY(-8deg) translateX(0); } to { transform: skewY(-8deg) translateX(-50%); } }
 @keyframes ticker { to { transform: translateX(-50%); } }
 @keyframes blink { 50% { opacity: .35; } }
 
@@ -468,7 +428,7 @@ body.online .banner { border-radius: 0; border-width: 1px 0; box-shadow: none; b
 @keyframes trigger-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.8) rotate(-2deg); } }
 .log li:last-child { color: var(--lime); }
 .log .t { color: var(--cyan); font-family: var(--font-en); font-size: 11px; }
-.room-code-big { color: var(--lime); animation: blink 2.4s ease-in-out infinite; }
+.room-code-big { color: var(--lime); }
 .result-title { font-family: var(--font-en); font-style: italic; font-weight: 400; }
 
 /* ---------- スマホ ---------- */
@@ -482,8 +442,6 @@ html.phone .phone-bar { background: rgba(5, 12, 36, .96); border-top: 2px solid 
 html.phone .phone-bar a { color: var(--ink); background: linear-gradient(180deg, #1c3f8c, #0f2560); border: 1px solid var(--edge); border-radius: 10px; box-shadow: none; }
 html.phone .col-right { background: #050c24; border-top: 2px solid var(--blue); }
 html.phone .menu { border-radius: 16px 16px 0 0; }
-html.phone .fx-ring { width: 120vmin; height: 120vmin; right: -50vmin; bottom: -40vmin; }
-html.phone .fx-stripes, html.phone .fx-dots { display: none; }
 
 /* ---------- 画面の切り替え・ウインドウが出るときのアニメーション ----------
    どれも transform と opacity だけを動かす（軽い）。display: none から表示に変わるたびに最初から再生される */
@@ -892,3 +850,17 @@ html.phone .export-deck-name { margin-bottom: 6px; }
   html.phone .export-qr { width: 64px; }
   html.phone .export-cards { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); }
 }
+
+/* ---------- デッキ選択の編集モード（app.js の toggleHomeEdit）：並び替え・削除 ---------- */
+.home-actions .home-edit { margin-left: auto; }
+.deck-home.editing .deck-tile { border-style: dashed; animation: tile-wobble 1.6s ease-in-out infinite; }
+.deck-home.editing .deck-tile:hover { transform: none; box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+.deck-home.editing .deck-tile:nth-child(2n) { animation-delay: -.8s; }
+.deck-home.editing .deck-tile { cursor: grab; user-select: none; -webkit-user-select: none; }
+.deck-tile.dragging { cursor: grabbing; animation: none !important; rotate: 2deg; box-shadow: 0 0 0 2px var(--lime), 0 16px 30px rgba(0, 0, 0, .6) !important; pointer-events: none; }
+.deck-tile-hole { border: 2px dashed var(--lime); border-radius: 16px; background: rgba(200, 255, 46, .08); }
+/* 「⠿」：ここをつかんでドラッグ（スマホでもページがスクロールしない） */
+.tile-handle { flex: 1; display: grid; place-items: center; min-height: 32px; font-weight: 800; font-size: 20px; line-height: 1; color: var(--lime); border: 1px dashed var(--lime); border-radius: 999px; cursor: grab; touch-action: none; }
+.tile-actions .tile-delete, .tile-actions .tile-delete:hover:not(:disabled) { color: #fff; background: linear-gradient(180deg, #e0574d, #b3271d); border-color: #ff9a90; }
+@keyframes tile-wobble { 0%, 100% { rotate: -.6deg; } 50% { rotate: .6deg; } }
+@media (prefers-reduced-motion: reduce) { .deck-home.editing .deck-tile { animation: none; } }
