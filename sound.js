@@ -4,6 +4,8 @@
 const Sound = (() => {
   const KEY = 'dm-deckmaker-sound';
   const VOLUME_KEY = 'dm-deckmaker-volume';
+  // 主音量（効果音と BGM の両方にかける）
+  const MASTER_KEY = 'dm-deckmaker-master';
   // 同じ音が続けて鳴らないよう、この間隔（ms）より短い2回目は鳴らさない（まとめて移動したときなど）
   const GAP = 120;
   const EXTS = ['mp3', 'wav'];
@@ -22,10 +24,13 @@ const Sound = (() => {
 
   let on = true;
   let volume = 0.6;
+  let master = 1;
   try {
     on = localStorage.getItem(KEY) !== 'off';
     const v = Number.parseFloat(localStorage.getItem(VOLUME_KEY));
     if (v >= 0 && v <= 1) volume = v;
+    const m = Number.parseFloat(localStorage.getItem(MASTER_KEY));
+    if (m >= 0 && m <= 1) master = m;
   } catch {}
   const audio = {};
   const lastPlayed = {};
@@ -57,7 +62,7 @@ const Sound = (() => {
     if (!base) return;
     // 鳴っている途中なら複製して重ねて鳴らす
     const a = base.paused || base.ended ? base : base.cloneNode();
-    a.volume = volume;
+    a.volume = volume * master;
     a.currentTime = 0;
     a.play().catch(() => {});
   }
@@ -73,6 +78,13 @@ const Sound = (() => {
     try { localStorage.setItem(VOLUME_KEY, String(volume)); } catch {}
   }
 
+  // 主音量：流れている BGM にもすぐ反映する
+  function setMaster(value) {
+    master = Math.min(1, Math.max(0, value));
+    try { localStorage.setItem(MASTER_KEY, String(master)); } catch {}
+    if (typeof Bgm !== 'undefined') Bgm.refresh();
+  }
+
   // 最初に鳴らすときに遅れないよう、ページを開いたら読み込んでおく（効果音がオンのとき）
   if (on) addEventListener('load', () => NAMES.forEach(load));
 
@@ -81,7 +93,8 @@ const Sound = (() => {
   // （長押しの詳細表示は頻繁なので鳴らさない。勝敗のダイアログは win / lose が鳴るので鳴らさない）
   document.addEventListener('click', (e) => {
     const el = e.target.closest?.('button, a[href], .deck-tile, [data-phone-tab], [data-phone-sheet]');
-    if (!el || el.disabled || el.closest('.card-detail.peek')) return;
+    // data-no-click-sound：ボタンの音を鳴らさない（ギャラリーの効果音のボタン）
+    if (!el || el.disabled || el.closest('.card-detail.peek') || el.hasAttribute('data-no-click-sound')) return;
     play('button');
   }, true);
   const quiet = (dlg) => dlg.id === 'result' || dlg.classList.contains('peek');
@@ -98,7 +111,7 @@ const Sound = (() => {
     if (wasOpen && !quiet(this)) play('close');
   };
 
-  return { play, manaName, setOn, setVolume, NAMES, get on() { return on; }, get volume() { return volume; } };
+  return { play, manaName, setOn, setVolume, setMaster, NAMES, get on() { return on; }, get volume() { return volume; }, get master() { return master; } };
 })();
 
 // BGM（bgm/<名前>.mp3 をくり返し流す）
@@ -127,9 +140,22 @@ const Bgm = (() => {
   const LOUDNESS = {
     select: -9.7, edit: -10.1, ready: -9.0,
     battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2, 'battle-seraphic-takedown': -14.2,
-    'battle-watering': -10.2, 'solo-re-roots': -10.2,
+    'battle-watering': -10.2, 'solo-re-roots': -10.2, settings: -9.7,
   };
   const TARGET = Math.min(...Object.values(LOUDNESS));
+  // 曲の一覧（ギャラリーと対戦画面の曲選びで使う）。group：battle＝ネット対戦、solo＝一人回し（ゲームごとにランダム）
+  const TRACKS = [
+    { file: 'select', title: 'State Of The Art', scene: 'デッキ選択' },
+    { file: 'edit', title: 'evergreen', scene: 'デッキ編集' },
+    { file: 'ready', title: 'beatonic nation', scene: '対戦の準備' },
+    { file: 'settings', title: 'California Gurls', scene: '設定' },
+    { file: 'battle', title: 'Hybrid Landscape', scene: '対戦', group: 'battle' },
+    { file: 'battle-cyber-girl', title: 'Cyber girl', scene: '対戦', group: 'battle' },
+    { file: 'battle-all-is-vanity', title: 'All is vanity', scene: '対戦', group: 'battle' },
+    { file: 'battle-seraphic-takedown', title: 'SERAPHIC TAKEDOWN', scene: '対戦', group: 'battle' },
+    { file: 'battle-watering', title: 'WATERING', scene: '一人回し', group: 'solo' },
+    { file: 'solo-re-roots', title: 'RE-ROOTS', scene: '一人回し', group: 'solo' },
+  ];
   const trackGain = (name) => (name in LOUDNESS ? Math.min(1, 10 ** ((TARGET - LOUDNESS[name]) / 20)) : 1);
   let on = true;
   let volume = 0.35;
@@ -221,7 +247,7 @@ const Bgm = (() => {
     return {
       name,
       ramp(to, ms) {
-        to *= k;
+        to *= k * Sound.master;
         const t = c.currentTime;
         gain.gain.cancelScheduledValues(t);
         gain.gain.setValueAtTime(gain.gain.value, t);
@@ -264,7 +290,7 @@ const Bgm = (() => {
     return {
       name,
       ramp(to, ms) {
-        to *= k;
+        to *= k * Sound.master;
         clearInterval(timer);
         const from = a.volume;
         const t0 = performance.now();
@@ -373,5 +399,16 @@ const Bgm = (() => {
     else start();
   });
 
-  return { play, preload, leave, setOn, setVolume, get on() { return on; }, get volume() { return volume; } };
+  // 曲を止める（オン・オフの設定は変えない。ギャラリーなど）
+  function stop() {
+    track = null;
+    seq++;
+    current?.stop(400);
+    current = null;
+  }
+
+  // 主音量が変わったとき（Sound.setMaster から）
+  const refresh = () => current?.ramp(volume, 50);
+
+  return { play, stop, preload, leave, setOn, setVolume, refresh, TRACKS, get on() { return on; }, get volume() { return volume; }, get track() { return track; } };
 })();

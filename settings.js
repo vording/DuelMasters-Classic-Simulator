@@ -1,5 +1,5 @@
-// 設定（両画面の <body> の最後、app.js / play.js より前で読み込む）
-// ・上のバーに歯車のボタンを置き、設定のダイアログを開く
+// 設定（各画面の <body> の最後、app.js / play.js より前で読み込む）
+// ・上のバーに歯車（設定画面 settings.html へのリンク）を置く。設定画面では、設定の項目とギャラリー（BGM・効果音を聞ける）を出す
 // ・プレイヤー名・アバター・効果音・BGM・戦場の背景・バックアップ（全デッキと設定の書き出し／読み込み）
 // ・名前やアバターを変えたら window に 'settingschange' イベントを送る
 const Settings = (() => {
@@ -103,64 +103,106 @@ const Settings = (() => {
     location.reload();
   }
 
-  // ---------- ダイアログ ----------
+  // ---------- 設定画面（settings.html）。ほかの画面は、上のバーの歯車から設定画面へ移る ----------
 
   const $ = (id) => document.getElementById(id);
-  const status = (t) => ($('settings-status').textContent = t);
+  const status = (t) => { if ($('settings-status')) $('settings-status').textContent = t; };
+
+  // 効果音の名前と、鳴る場面（ギャラリーに出す）
+  const SE_LABELS = {
+    draw: 'カードを引く', shuffle: 'シャッフル', tap: 'タップ', untap: 'アンタップ',
+    summon: '召喚', evolve: '進化', spell: '呪文', trigger: 'S・トリガー', field: 'クリーチャー以外を出す',
+    'mana-light': 'マナ（光）', 'mana-water': 'マナ（水）', 'mana-dark': 'マナ（闇）', 'mana-fire': 'マナ（火）', 'mana-nature': 'マナ（自然）', 'mana-multi': 'マナ（多色）',
+    attack: '攻撃', attacked: '攻撃された', block: 'ブロック', break: 'ブレイク', destroy: '破壊', discard: '墓地へ',
+    phase: 'フェイズ', myturn: '自分のターン', endturn: 'ターン終了', win: '勝利', lose: '敗北',
+    button: 'ボタン', cancel: '取り消し', open: '開く', close: '閉じる', 'card-add': 'カードを入れる', 'card-remove': 'カードを抜く', page: '画面の切り替え',
+  };
+
+  // 設定画面から戻る先（来た画面）。index.html・play.html だけ
+  function backUrl() {
+    const back = new URLSearchParams(location.search).get('back') ?? '';
+    return /^(index|play)\.html([?#].*)?$/.test(back) ? back : 'index.html';
+  }
 
   function build() {
-    const dialog = document.createElement('dialog');
-    dialog.id = 'settings';
-    dialog.className = 'settings';
-    // 戦場の背景は、背景を選べる画面（felt.js を読み込んだ画面）だけに出す
-    // 自動でターン終了も、一人回し・対戦画面だけ
-    const felt = document.documentElement.dataset.felt
-      ? `<fieldset class="settings-group well"><legend><b>FIELD</b><small>戦場の背景</small></legend><div class="felt-picker settings-felt"></div></fieldset>
-        <fieldset class="settings-group well"><legend><b>AUTO</b><small>自動</small></legend>
-          <div class="settings-row"><label><input type="checkbox" id="settings-autoend"> 攻撃し終えたら、3秒後に自動でターン終了</label></div>
-        </fieldset>`
-      : '';
-    dialog.innerHTML = `
-      <!-- 開いたときは見出しにフォーカスする（名前の入力欄が自動で編集状態になり、スマホでキーボードが出ないように） -->
-      <h2 class="panel-head" tabindex="-1" autofocus><b>SETTINGS</b><small>設定</small></h2>
-      <div class="dialog-body">
-        <fieldset class="settings-group well">
-          <legend><b>PLAYER</b><small>プレイヤー</small></legend>
-          <div class="settings-row">
-            <label for="settings-name">名前</label>
-            <input id="settings-name" type="text" maxlength="16" autocomplete="off">
+    const root = $('settings-root');
+    if (!root) return buildGear();
+    root.className = 'settings settings-page';
+    root.innerHTML = `
+      <div class="settings-columns">
+        <section class="panel settings-panel" id="settings-view">
+          <h2 class="panel-head"><b>SETTINGS</b><small>設定</small></h2>
+          <div class="dialog-body">
+            <fieldset class="settings-group well">
+              <legend><b>PLAYER</b><small>プレイヤー</small></legend>
+              <div class="settings-row">
+                <label for="settings-name">名前</label>
+                <input id="settings-name" type="text" maxlength="16" autocomplete="off">
+              </div>
+              <div class="avatar-choices" id="settings-avatars" role="radiogroup" aria-label="アバター"></div>
+            </fieldset>
+            <fieldset class="settings-group well">
+              <legend><b>SOUND</b><small>サウンド</small></legend>
+              <div class="settings-row sound-row master-row">
+                <span class="master-label"><b>MASTER</b><small>主音量</small></span>
+                <input type="range" id="settings-master" min="0" max="100" step="5" aria-label="主音量（BGM と効果音の両方）">
+                <span id="settings-master-text" class="settings-value"></span>
+              </div>
+              <div class="settings-row sound-row">
+                <label class="switch"><input type="checkbox" id="settings-bgm"><span class="switch-ui" aria-hidden="true"></span><b>BGM</b></label>
+                <input type="range" id="settings-bgm-volume" min="0" max="100" step="5" aria-label="BGM の音量">
+                <span id="settings-bgm-volume-text" class="settings-value"></span>
+              </div>
+              <div class="settings-row sound-row">
+                <label class="switch"><input type="checkbox" id="settings-sound"><span class="switch-ui" aria-hidden="true"></span><b>SE</b><small>効果音</small></label>
+                <input type="range" id="settings-volume" min="0" max="100" step="5" aria-label="効果音の音量">
+                <span id="settings-volume-text" class="settings-value"></span>
+              </div>
+            </fieldset>
+            <fieldset class="settings-group well"><legend><b>FIELD</b><small>戦場の背景</small></legend><div class="felt-picker settings-felt"></div></fieldset>
+            <fieldset class="settings-group well"><legend><b>AUTO</b><small>自動</small></legend>
+              <div class="settings-row"><label><input type="checkbox" id="settings-autoend"> 攻撃し終えたら、3秒後に自動でターン終了</label></div>
+            </fieldset>
+            <fieldset class="settings-group well">
+              <legend><b>GALLERY</b><small>ギャラリー</small></legend>
+              <p class="note">BGM と効果音を聞けます。</p>
+              <div class="settings-row"><button type="button" id="open-gallery" class="primary">ギャラリーを開く ▶</button></div>
+            </fieldset>
+            <fieldset class="settings-group well">
+              <legend><b>BACKUP</b><small>バックアップ</small></legend>
+              <p class="note">すべてのデッキと設定を1つのファイルに保存します。別の端末やブラウザで読み込むと、同じデッキを使えます。</p>
+              <div class="settings-row">
+                <button type="button" id="backup-save">ファイルに保存</button>
+                <button type="button" id="backup-load">ファイルから読み込む…</button>
+                <input type="file" id="backup-file" accept=".json,application/json" hidden>
+              </div>
+              <p id="settings-status" class="status"></p>
+            </fieldset>
           </div>
-          <div class="avatar-choices" id="settings-avatars" role="radiogroup" aria-label="アバター"></div>
-        </fieldset>
-        <fieldset class="settings-group well">
-          <legend><b>SOUND</b><small>サウンド</small></legend>
-          <div class="settings-row sound-row">
-            <label class="switch"><input type="checkbox" id="settings-bgm"><span class="switch-ui" aria-hidden="true"></span><b>BGM</b></label>
-            <input type="range" id="settings-bgm-volume" min="0" max="100" step="5" aria-label="BGM の音量">
-            <span id="settings-bgm-volume-text" class="settings-value"></span>
+        </section>
+        <section class="panel gallery-panel" id="gallery-view" hidden>
+          <h2 class="panel-head"><b>GALLERY</b><small>ギャラリー</small></h2>
+          <div class="dialog-body">
+            <fieldset class="settings-group well">
+              <legend><b>BGM</b><small>押すと流れる・もう一度押すと止まる</small></legend>
+              <div id="gallery-bgm" class="gallery-bgm"></div>
+            </fieldset>
+            <fieldset class="settings-group well">
+              <legend><b>SE</b><small>効果音。押すと鳴る</small></legend>
+              <div id="gallery-se" class="gallery-se"></div>
+            </fieldset>
+            <p id="gallery-note" class="note"></p>
           </div>
-          <div class="settings-row sound-row">
-            <label class="switch"><input type="checkbox" id="settings-sound"><span class="switch-ui" aria-hidden="true"></span><b>SE</b><small>効果音</small></label>
-            <input type="range" id="settings-volume" min="0" max="100" step="5" aria-label="効果音の音量">
-            <span id="settings-volume-text" class="settings-value"></span>
-          </div>
-        </fieldset>
-        ${felt}
-        <fieldset class="settings-group well">
-          <legend><b>BACKUP</b><small>バックアップ</small></legend>
-          <p class="note">すべてのデッキと設定を1つのファイルに保存します。別の端末やブラウザで読み込むと、同じデッキを使えます。</p>
-          <div class="settings-row">
-            <button type="button" id="backup-save">ファイルに保存</button>
-            <button type="button" id="backup-load">ファイルから読み込む…</button>
-            <input type="file" id="backup-file" accept=".json,application/json" hidden>
-          </div>
-          <p id="settings-status" class="status"></p>
-        </fieldset>
-        <div class="dialog-actions">
-          <button type="button" id="settings-close" class="primary">閉じる</button>
-        </div>
+        </section>
       </div>`;
-    document.body.append(dialog);
+    // 戻る：ギャラリーなら設定へ、設定なら来た画面へ（BGM をフェードアウトしてから移る）
+    $('settings-back').addEventListener('click', () => {
+      if (location.hash === '#gallery') history.back();
+      else Bgm.leave(backUrl());
+    });
+    // ギャラリーは別の画面（#gallery）。ブラウザの戻るでも設定に戻る
+    $('open-gallery').addEventListener('click', () => { location.hash = 'gallery'; });
+    window.addEventListener('hashchange', showView);
 
     $('settings-avatars').append(...AVATARS.map((a) => {
       const label = document.createElement('label');
@@ -176,9 +218,10 @@ const Settings = (() => {
       return label;
     }));
 
-    $('settings-name').addEventListener('change', (e) => setName(e.target.value));
+    // 名前は入力するたびに保存する（戻るボタンで離れても残るように）
+    $('settings-name').addEventListener('input', (e) => setName(e.target.value));
 
-    $('settings-autoend')?.addEventListener('change', (e) => {
+    $('settings-autoend').addEventListener('change', (e) => {
       try { localStorage.setItem('dm-deckmaker-autoend', e.target.checked ? 'on' : 'off'); } catch {}
     });
     $('settings-sound').addEventListener('change', (e) => {
@@ -191,6 +234,11 @@ const Settings = (() => {
       renderVolume();
     });
     $('settings-volume').addEventListener('change', () => Sound.play('button'));
+    $('settings-master').addEventListener('input', (e) => {
+      Sound.setMaster(Number(e.target.value) / 100);
+      renderVolume();
+    });
+    $('settings-master').addEventListener('change', () => Sound.play('button'));
     $('settings-bgm').addEventListener('change', (e) => {
       Bgm.setOn(e.target.checked);
       renderVolume();
@@ -208,17 +256,62 @@ const Settings = (() => {
       if (file) loadBackup(file);
     });
 
-    $('settings-close').addEventListener('click', () => dialog.close());
-    // 入力中の名前は、閉じたときにも保存する（Enter を押さずに閉じた場合）
-    dialog.addEventListener('close', () => setName($('settings-name').value));
+    buildGallery();
+    fill();
+    showView();
+  }
 
-    // 上のバーの歯車
-    const gear = document.createElement('button');
-    gear.type = 'button';
+  // 設定とギャラリーの切り替え。ギャラリーでは BGM を止め、押した曲だけを流す。設定に戻ったら設定画面の曲
+  function showView() {
+    const gallery = location.hash === '#gallery';
+    $('settings-view').hidden = gallery;
+    $('gallery-view').hidden = !gallery;
+    $('settings-back').textContent = gallery ? '◀ 設定に戻る' : '◀ 戻る';
+    if (gallery) Bgm.stop();
+    else Bgm.play('settings');
+    renderGallery();
+    scrollTo(0, 0);
+  }
+
+  // ギャラリー：BGM（押すとその曲に切り替わる）と効果音（押すと鳴る）
+  function buildGallery() {
+    $('gallery-bgm').replaceChildren(...Bgm.TRACKS.map((t) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'gallery-track' });
+      b.dataset.track = t.file;
+      b.append(Object.assign(document.createElement('b'), { textContent: `♪ ${t.title}` }), Object.assign(document.createElement('small'), { textContent: t.scene }));
+      // もう一度押すと止める
+      b.addEventListener('click', () => {
+        if (Bgm.track === t.file) Bgm.stop();
+        else Bgm.play(t.file);
+        renderGallery();
+      });
+      return b;
+    }));
+    $('gallery-se').replaceChildren(...Sound.NAMES.map((name) => {
+      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'gallery-se-btn', textContent: SE_LABELS[name] ?? name, title: name });
+      // 押したときのボタンの音は鳴らさず、その効果音だけを鳴らす
+      b.dataset.noClickSound = '';
+      b.addEventListener('click', () => Sound.play(name));
+      return b;
+    }));
+    renderGallery();
+  }
+
+  function renderGallery() {
+    for (const b of document.querySelectorAll('.gallery-track')) b.setAttribute('aria-pressed', String(b.dataset.track === Bgm.track));
+    const off = [!Bgm.on && 'BGM', !Sound.on && '効果音'].filter(Boolean);
+    $('gallery-note').textContent = off.length ? `${off.join('と')}はオフになっています（サウンドでオンにすると聞けます）` : '';
+  }
+
+  // ほかの画面：上のバーに歯車（設定画面へのリンク）を置く。戻ったら来た画面に戻れるよう、今の画面を渡す
+  let gear = null;
+  function buildGear() {
+    gear = document.createElement('a');
     gear.className = 'settings-btn';
     gear.title = '設定';
     gear.setAttribute('aria-label', '設定');
-    gear.addEventListener('click', open);
+    const here = location.pathname.split('/').pop() || 'index.html';
+    gear.href = `settings.html?back=${encodeURIComponent(here + location.search)}`;
     document.querySelector('.topbar')?.append(gear);
   }
 
@@ -228,24 +321,28 @@ const Settings = (() => {
     $('settings-volume-text').textContent = `${$('settings-volume').value}%`;
     $('settings-bgm-volume').disabled = !Bgm.on;
     $('settings-bgm-volume-text').textContent = `${$('settings-bgm-volume').value}%`;
+    $('settings-master-text').textContent = `${$('settings-master').value}%`;
+    renderGallery();
   }
 
-  function open() {
+  // 設定画面を開いたときに、今の設定を入れる
+  function fill() {
     $('settings-name').value = name();
     const current = $('settings-avatars').querySelector(`input[value="${avatar()}"]`);
     if (current) current.checked = true;
     $('settings-sound').checked = Sound.on;
-    if ($('settings-autoend')) {
-      try { $('settings-autoend').checked = localStorage.getItem('dm-deckmaker-autoend') !== 'off'; } catch {}
-    }
+    try { $('settings-autoend').checked = localStorage.getItem('dm-deckmaker-autoend') !== 'off'; } catch {}
     $('settings-volume').value = String(Math.round(Sound.volume * 100));
     $('settings-bgm').checked = Bgm.on;
     $('settings-bgm-volume').value = String(Math.round(Bgm.volume * 100));
+    $('settings-master').value = String(Math.round(Sound.master * 100));
     renderVolume();
     status('');
-    $('settings').showModal();
-    // 選んでいるアバターが見える位置までスクロールする
-    current?.parentElement.scrollIntoView({ block: 'nearest' });
+  }
+
+  // 設定画面を開く（ほかの画面から。歯車を押したのと同じ）
+  function open() {
+    gear?.click();
   }
 
   build();

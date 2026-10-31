@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>設定 — DuelMasters Classic Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
+  <link rel="stylesheet" href="theme.css?v=8">
+  <link rel="stylesheet" href="skin.css?v=40">
+  <script src="device.js?v=1"></script>
+  <script src="logo.js?v=1"></script>
+  <script src="felt.js?v=2"></script>
+  <script src="zoom.js?v=8"></script>
+</head>
+<body>
+  <div class="fx" aria-hidden="true"><i class="fx-civ civ-mark-light"></i><i class="fx-civ civ-mark-water"></i><i class="fx-civ civ-mark-darkness"></i><i class="fx-civ civ-mark-fire"></i><i class="fx-civ civ-mark-nature"></i></div>
+  <div class="app settings-app">
+    <header class="topbar">
+      <h1 class="logo"><span class="logo-mark logo-img" role="img" aria-label="DuelMasters Classic Simulator"></span></h1>
+      <nav class="nav">
+        <a href="index.html"><b>DECK BUILD</b><small>デッキ作成</small></a>
+        <a href="play.html"><b>BATTLE</b><small>対戦</small></a>
+      </nav>
+      <span class="spacer"></span>
+    </header>
+
+    <!-- 設定画面：設定の項目とギャラリー（settings.js が中身を入れる） -->
+    <main class="settings-main">
+      <div class="edit-bar settings-bar">
+        <button type="button" id="settings-back" class="back-btn">◀ 戻る</button>
+      </div>
+      <div id="settings-root"></div>
+    </main>
+  </div>
+
+  <script src="sound.js?v=13"></script>
+  <script src="settings.js?v=8"></script>
+</body>
+</html>
