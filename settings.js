@@ -254,13 +254,14 @@ const Settings = (() => {
     showView();
   }
 
-  // 設定とギャラリーの切り替え。ギャラリーでは設定画面の曲を流したまま、曲を押したらその曲に切り替える。設定に戻ったら設定画面の曲
+  // 設定とギャラリーの切り替え。ギャラリーでは BGM を止め（フェードなし）、押した曲だけを流す。設定に戻ったら設定画面の曲
   function showView() {
     const gallery = location.hash === '#gallery';
     $('settings-view').hidden = gallery;
     $('gallery-view').hidden = !gallery;
     $('settings-back').textContent = gallery ? '◀ 設定に戻る' : '◀ 戻る';
-    if (!gallery) Bgm.play('settings');
+    if (gallery) Bgm.stop({ fade: false });
+    else Bgm.play('settings');
     renderGallery();
     scrollTo(0, 0);
   }
