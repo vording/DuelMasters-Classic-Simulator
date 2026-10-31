@@ -120,7 +120,49 @@ function loadGame() {
 }
 
 function saveGame() {
+  if (leavingPage) return;
   try { sessionStorage.setItem(GAME_KEY, JSON.stringify(game)); } catch {}
+}
+
+// ---------- 対戦画面から離れたら初期化する ----------
+// 戻る（デッキ作成へ）前には確認を出し、戻ったら途中のゲーム・部屋・チャットを消す。再読み込みのときだけ続きから
+let leavingPage = false;
+// 途中のゲームがあるか（勝敗が決まったあとは聞かない）
+const inProgress = () => !!game && !game.result;
+const LEAVE_TEXT = '対戦画面から戻ると、今のゲームは終了します（最初からやり直しになります）。戻りますか？';
+
+function clearSavedGame() {
+  for (const key of [GAME_KEY, NET_KEY, CHAT_KEY]) {
+    try { sessionStorage.removeItem(key); } catch {}
+  }
+}
+
+function setupLeaveGuard() {
+  // 画面の中のリンク（上の DECK BUILD・スマホの「デッキ」・開始画面の「デッキ作成に戻る」）：確認してから初期化して移る
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest?.('a[href]');
+    if (!a || e.defaultPrevented || !inProgress()) return;
+    if (!confirm(LEAVE_TEXT)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    leavingPage = true;
+    clearSavedGame();
+    Net.stop();
+  }, true);
+  // ブラウザの戻る・タブを閉じる・再読み込み：ブラウザの確認を出す
+  window.addEventListener('beforeunload', (e) => {
+    if (leavingPage || !inProgress()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+  // 戻る・進むで、残っていた画面がそのまま表示されたとき：初期化して読み直す
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    clearSavedGame();
+    location.reload();
+  });
 }
 
 function shuffle(arr) {
@@ -2382,6 +2424,16 @@ function init() {
   // BGM：開始画面・相手待ちは ready、ゲームが始まったら対戦の曲（render の updateBgm）
   Bgm.play('ready');
   if (game) Bgm.preload(battleBgm().file);
+
+  // 対戦画面に来たら最初から（再読み込みのときだけ、途中のゲーム・部屋の続きから）
+  setupLeaveGuard();
+  const reloaded = performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload';
+  if (!reloaded) {
+    clearSavedGame();
+    game = null;
+    netInfo = null;
+    chat = [];
+  }
 
   // 一人回しと対戦は別の画面：保存してあるゲームは、同じ種類の画面でだけ続きから
   const savedOnline = !!netInfo;
