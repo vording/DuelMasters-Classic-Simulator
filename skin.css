@@ -770,7 +770,7 @@ html.phone .fx-cards .card.shield.planted::before { content: "仕込"; padding: 
 .civ-mark-darkness { --civ-img: url("img/civ/darkness.svg"); --civ-c: #b48cd8; }
 .civ-mark-fire { --civ-img: url("img/civ/fire.svg"); --civ-c: #ff6a4d; }
 .civ-mark-nature { --civ-img: url("img/civ/nature.svg"); --civ-c: #6fd06a; }
-.fx-civ, .tk, .matching-civs i {
+.fx-civ, .tk {
   background: var(--civ-c);
   -webkit-mask: var(--civ-img) center / contain no-repeat;
   mask: var(--civ-img) center / contain no-repeat;
@@ -805,22 +805,12 @@ html.phone .fx-cards .card.shield.planted::before { content: "仕込"; padding: 
 .board::before { content: ''; position: absolute; left: 6%; right: 6%; top: 50%; z-index: -1; height: 18%; transform: translateY(-50%); opacity: .06; pointer-events: none;
   background: #fff; -webkit-mask: url("img/civ/band.svg") center / contain no-repeat; mask: url("img/civ/band.svg") center / contain no-repeat; }
 
-/* マッチング画面：5つの文明がレーダーのまわりを回る */
-.matching-civs { position: absolute; left: 50%; top: 38%; width: min(92vw, 560px); aspect-ratio: 1; transform: translate(-50%, -50%); pointer-events: none; animation: civ-orbit 40s linear infinite; }
-@keyframes civ-orbit { to { rotate: 360deg; } }
-.matching-civs i { position: absolute; left: 50%; top: 50%; width: 15%; height: 15%; margin: -7.5% 0 0 -7.5%; opacity: .5; }
-.matching-civs i:nth-child(1) { transform: rotate(0deg) translateY(-330%) rotate(0deg); }
-.matching-civs i:nth-child(2) { transform: rotate(72deg) translateY(-330%) rotate(-72deg); width: 20%; margin-left: -10%; }
-.matching-civs i:nth-child(3) { transform: rotate(144deg) translateY(-330%) rotate(-144deg); width: 22%; margin-left: -11%; }
-.matching-civs i:nth-child(4) { transform: rotate(216deg) translateY(-330%) rotate(-216deg); }
-.matching-civs i:nth-child(5) { transform: rotate(288deg) translateY(-330%) rotate(-288deg); width: 20%; margin-left: -10%; }
-
 /* 「ゲームの開始」画面の後ろにも、文明の帯を薄く */
 #setup::backdrop {
   background: url("img/civ/band-faint.svg") center 88% / min(90vw, 900px) auto no-repeat, radial-gradient(circle at 50% 38%, rgba(31, 107, 255, .35), transparent 60%), repeating-linear-gradient(0deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), repeating-linear-gradient(90deg, rgba(57, 208, 255, .06) 0 1px, transparent 1px 40px), #040a1e;
 }
 @media (prefers-reduced-motion: reduce) {
-  .fx-civ, .matching-civs { animation: none !important; }
+  .fx-civ { animation: none !important; }
 }
 
 /* 設定画面：開いたときは見出しにフォーカスする（枠は出さない） */
@@ -863,3 +853,23 @@ html.phone .song-title { top: 42px; right: 6px; font-size: 11px; padding: 3px 9p
 
 /* 開始画面：一人回しの画面では一人回しだけ、対戦の画面ではネット対戦だけを出す */
 body:not(.solo-page) .setup .mode-solo, body.solo-page .setup .mode-net, body.solo-page #order-note { display: none; }
+
+/* ---------- エクスポート（app.js の openExport）：カードの一覧と QR コード ---------- */
+.export-dialog { width: min(860px, 96vw); }
+.export-dialog .dialog-body { max-height: calc(92dvh - 40px); overflow-y: auto; }
+.export-main { display: flex; gap: 14px; align-items: flex-start; }
+.export-cards { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 56dvh; overflow-y: auto; padding: 8px; background: rgba(0, 0, 0, .25); border-radius: 12px; }
+.export-card { position: relative; }
+.export-card .dm-face { width: 100%; }
+.export-qty { position: absolute; right: 2px; bottom: 2px; padding: 0 6px; font: 400 13px/1.4 var(--font-en); color: #08122e; background: var(--lime); border-radius: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+.export-qr-box { flex: none; width: 200px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.export-qr { width: 200px; aspect-ratio: 1; display: grid; place-items: center; padding: 6px; color: var(--muted); font-size: 12px; text-align: center; background: #fff; border-radius: 12px; }
+.export-qr svg { display: block; width: 100%; height: 100%; }
+.export-qr-note { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+.export-dialog textarea { width: 100%; margin-top: 10px; }
+html.phone .export-main { flex-direction: column-reverse; align-items: stretch; }
+html.phone .export-qr-box { width: auto; }
+html.phone .export-qr { width: min(180px, 52vw); }
+/* ボタンはいつも見えるように、ダイアログの下に固定する */
+.export-dialog .dialog-actions { position: sticky; bottom: -1px; margin-top: 10px; padding: 8px 0 2px; background: var(--panel); box-shadow: 0 16px 0 var(--panel); }
+html.phone .export-cards { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); max-height: none; overflow: visible; }

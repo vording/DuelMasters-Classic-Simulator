@@ -286,41 +286,66 @@ function exportText() {
     .join('\n');
 }
 
-async function copyExport(button) {
-  const text = exportText();
-  const label = button.textContent;
-  if (!phone()) {
-    try {
-      await navigator.clipboard.writeText(text);
-      button.textContent = 'コピーしました';
-      setTimeout(() => (button.textContent = label), 1500);
-      return;
-    } catch {}
+// エクスポート：デッキのカードの一覧と、インポート用の QR コード（共有リンク）を出す
+async function openExport() {
+  const deck = activeDeck();
+  if (!deckTotal(deck)) {
+    alert('デッキが空です。');
+    return;
   }
-  showExport(text, 'デッキリスト');
-}
-
-function showExport(text, title) {
-  $('export-title').textContent = title;
-  $('export-text').value = text;
+  $('export-title').textContent = deck.name;
+  $('export-text').hidden = true;
   $('export-status').textContent = '';
-  $('export-share').hidden = !navigator.share;
+  $('export-cards').replaceChildren(...deckEntries(deck).sort((a, b) => byCostName(a.card, b.card)).map(({ card, qty }) => {
+    const item = document.createElement('div');
+    item.className = 'export-card';
+    item.append(DM.cardFace(card, { lazy: true }), Object.assign(document.createElement('span'), { className: 'export-qty', textContent: `×${qty}` }));
+    return item;
+  }));
+  $('export-qr').replaceChildren();
   $('export-dialog').showModal();
+  // QR コード：読み込むとデッキを追加できる共有リンク
+  const url = await deckLink(deck);
+  try {
+    const qr = qrcode(0, 'L');
+    qr.addData(url);
+    qr.make();
+    $('export-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true, alt: 'デッキの共有リンクの QR コード' });
+  } catch {
+    $('export-qr').textContent = 'デッキが大きすぎて QR コードにできません。共有リンクを使ってください';
+  }
 }
 
-async function copyFromDialog() {
-  const box = $('export-text');
+// コピーする（できなければ、テキストを出して長押しでコピーしてもらう）
+async function copyText(text, done) {
   const status = (t) => ($('export-status').textContent = t);
   try {
-    await navigator.clipboard.writeText(box.value);
-    status('コピーしました');
+    await navigator.clipboard.writeText(text);
+    status(done);
     return;
   } catch {}
+  const box = $('export-text');
+  box.hidden = false;
+  box.value = text;
   box.focus();
-  box.setSelectionRange(0, box.value.length);
+  box.setSelectionRange(0, text.length);
   let ok = false;
   try { ok = document.execCommand('copy'); } catch {}
-  status(ok ? 'コピーしました' : 'コピーできませんでした。テキストを長押しして「すべてを選択」→「コピー」してください');
+  status(ok ? done : 'コピーできませんでした。下のテキストを長押しして「すべてを選択」→「コピー」してください');
+}
+
+// テキストでコピー（「4 カード名」の形式）
+const copyDeckText = () => copyText(exportText(), 'デッキリストをコピーしました');
+
+// 共有リンク：スマホは共有メニュー、PC はコピー
+async function copyDeckLink() {
+  const deck = activeDeck();
+  const url = await deckLink(deck);
+  if (phone() && navigator.share) {
+    navigator.share({ title: deck.name, url }).catch(() => {});
+    return;
+  }
+  copyText(url, '共有リンクをコピーしました');
 }
 
 function openImport() {
@@ -388,27 +413,6 @@ async function readDeckLink(value) {
   const data = JSON.parse(new TextDecoder().decode(bytes));
   if (!Array.isArray(data?.c)) throw new Error('bad link');
   return data;
-}
-
-async function shareLink(button) {
-  const deck = activeDeck();
-  if (!deckTotal(deck)) {
-    alert('デッキが空です。');
-    return;
-  }
-  const url = await deckLink(deck);
-  const label = button.textContent;
-  if (phone() && navigator.share) {
-    navigator.share({ title: deck.name, url }).catch(() => {});
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    button.textContent = 'リンクをコピーしました';
-    setTimeout(() => (button.textContent = label), 1500);
-  } catch {
-    showExport(url, '共有リンク');
-  }
 }
 
 // 共有リンクで開かれたら、確認してからデッキを追加する
@@ -697,13 +701,12 @@ function init() {
     }
   });
 
-  $('export').addEventListener('click', () => copyExport($('export')));
+  $('export').addEventListener('click', openExport);
   $('import').addEventListener('click', openImport);
   $('import-form').addEventListener('submit', runImport);
   $('import-cancel').addEventListener('click', () => $('import-dialog').close());
-  $('share-link').addEventListener('click', () => shareLink($('share-link')));
-  $('export-copy').addEventListener('click', copyFromDialog);
-  $('export-share').addEventListener('click', () => navigator.share?.({ title: activeDeck().name, text: $('export-text').value }).catch(() => {}));
+  $('export-copy').addEventListener('click', copyDeckText);
+  $('export-link').addEventListener('click', copyDeckLink);
   $('export-close').addEventListener('click', () => $('export-dialog').close());
   // デッキ選択・デッキ編集の切り替え（ブラウザの戻る・進むも）
   $('deck-back').addEventListener('click', goHome);

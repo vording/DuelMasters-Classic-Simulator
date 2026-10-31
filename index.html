@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="style.css?v=9">
-  <link rel="stylesheet" href="skin.css?v=32">
+  <link rel="stylesheet" href="skin.css?v=33">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
-  <script src="news.js?v=5"></script>
+  <script src="news.js?v=6"></script>
   <script src="zoom.js?v=8"></script>
 </head>
 <body>
@@ -94,9 +94,8 @@
             <button type="button" id="reg-open" title="殿堂（制限・禁止）">殿堂…</button>
           </div>
           <div class="deck-actions io-actions">
-            <button id="export" title="「4 カード名」の形式">テキストでコピー</button>
+            <button id="export" title="カードの一覧・QR コード・テキストでコピー・共有リンク">エクスポート…</button>
             <button id="import">インポート…</button>
-            <button id="share-link" title="開くとこのデッキを追加できるリンク。LINE などで送れます">共有リンク</button>
           </div>
           <div class="play-btns">
             <button id="deck-solo" class="play-btn"><b>SOLO</b> 一人回し ▶</button>
@@ -148,15 +147,24 @@
     </form>
   </dialog>
 
-  <dialog id="export-dialog" class="import-dialog">
-    <h2 class="panel-head"><b>EXPORT</b><small id="export-title">デッキリスト</small></h2>
+  <!-- エクスポート：デッキのカードの一覧と、インポート用の QR コード（共有リンク）。テキストでコピー・共有リンクを選べる -->
+  <dialog id="export-dialog" class="export-dialog">
+    <h2 class="panel-head"><b>EXPORT</b><small id="export-title">デッキ</small></h2>
     <div class="dialog-body">
-      <textarea id="export-text" rows="14" spellcheck="false"></textarea>
+      <div class="export-main">
+        <div id="export-cards" class="export-cards"></div>
+        <div class="export-qr-box">
+          <div id="export-qr" class="export-qr"></div>
+          <p class="export-qr-note">読み取ると、このデッキを追加できます</p>
+        </div>
+      </div>
+      <!-- コピーできなかったときだけ、テキスト・リンクをここに出す（長押しでコピー） -->
+      <textarea id="export-text" rows="6" spellcheck="false" hidden></textarea>
       <p id="export-status" class="status import-status"></p>
       <div class="dialog-actions">
         <button type="button" id="export-close">閉じる</button>
-        <button type="button" id="export-share" hidden>共有…</button>
-        <button type="button" id="export-copy" class="primary">コピー</button>
+        <button type="button" id="export-copy" title="「4 カード名」の形式">テキストでコピー</button>
+        <button type="button" id="export-link" class="primary" title="開くとこのデッキを追加できるリンク。LINE などで送れます">共有リンク</button>
       </div>
     </div>
   </dialog>
@@ -179,6 +187,7 @@
   <script src="settings.js?v=7"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
-  <script src="app.js?v=24"></script>
+  <script src="vendor/qrcode.js?v=1"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
