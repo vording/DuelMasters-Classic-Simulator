@@ -138,7 +138,7 @@ const Bgm = (() => {
   // 曲を足したら、ffmpeg -i bgm/<名前>.mp3 -af ebur128 -f null - の Integrated loudness を書き足す（書いていない曲はそのまま）
   const LOUDNESS = {
     select: -9.7, edit: -10.1, ready: -9.0,
-    battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2, 'battle-seraphic-takedown': -14.2,
+    battle: -10.3, 'battle-cyber-girl': -11.8, 'battle-all-is-vanity': -11.2, 'battle-seraphic-takedown': -14.2, 'battle-celebrate-nite': -9.5,
     'battle-watering': -10.2, 'solo-re-roots': -10.2, settings: -9.7,
   };
   const TARGET = Math.min(...Object.values(LOUDNESS));
@@ -152,6 +152,7 @@ const Bgm = (() => {
     { file: 'battle-cyber-girl', title: 'Cyber girl', scene: '対戦', group: 'battle' },
     { file: 'battle-all-is-vanity', title: 'All is vanity', scene: '対戦', group: 'battle' },
     { file: 'battle-seraphic-takedown', title: 'SERAPHIC TAKEDOWN', scene: '対戦', group: 'battle' },
+    { file: 'battle-celebrate-nite', title: 'CELEBRATE NITE', scene: '対戦', group: 'battle' },
     { file: 'battle-watering', title: 'WATERING', scene: '一人回し', group: 'solo' },
     { file: 'solo-re-roots', title: 'RE-ROOTS', scene: '一人回し', group: 'solo' },
   ];

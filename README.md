@@ -128,14 +128,15 @@
 | edit | デッキ編集 | evergreen |
 | ready | 対戦の準備（開始画面・相手待ち・1ターン目の前）。頭の1秒を削って流す | beatonic nation |
 | settings | 設定画面（ギャラリーでは流さない） | California Gurls |
-| battle | ネット対戦（4曲から対戦ごとにランダム） | Hybrid Landscape |
+| battle | ネット対戦（5曲から対戦ごとにランダム） | Hybrid Landscape |
 | battle-cyber-girl | 〃 | Cyber girl |
 | battle-all-is-vanity | 〃 | All is vanity |
 | battle-seraphic-takedown | 〃 | SERAPHIC TAKEDOWN |
+| battle-celebrate-nite | 〃 | CELEBRATE NITE |
 | battle-watering | 一人回し（2曲からゲームごとにランダム） | WATERING |
 | solo-re-roots | 〃 | RE-ROOTS |
 
-対戦中の曲は、ネット対戦は1回の対戦ごとに4曲からランダムで選び（一人回しは WATERING・RE-ROOTS からランダム）、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
+対戦中の曲は、ネット対戦は1回の対戦ごとに5曲からランダムで選び（一人回しは WATERING・RE-ROOTS からランダム）、対戦が始まってから10秒ほど画面の右上の端に「♪ 曲名」と出します（BGM がオフのときは出さない）。曲を足すときは `play.js` の `BATTLE_BGM` に追加してください。
 
 ※ 曲はユーザーが用意したファイルです。公開する場合は、曲の利用条件を確認してください。
 
