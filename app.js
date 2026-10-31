@@ -282,6 +282,8 @@ const TITLE_KEY = 'dm-deckmaker-title-seen';
 
 // 真っ暗な画面に、ふわふわ浮かんで点滅するロゴと TOUCH START だけ
 function showTitle() {
+  // タイトル画面では BGM を流さない（スタートしたら流す）
+  Bgm.stop();
   const screen = $('title-screen');
   screen.classList.remove('launch');
   screen.hidden = false;
@@ -413,6 +415,10 @@ async function openExport() {
     return item;
   }));
   $('export-qr').replaceChildren();
+  // 画像で保存：カードの画像を書き込めるか（公式サイトが許可しているか）を1枚読んで確かめ、書き込めるときだけボタンを出す
+  $('export-image').hidden = true;
+  const probe = deckEntries(deck).find((e) => e.card.image);
+  if (probe) loadImage(probe.card.image, true).then((img) => { $('export-image').hidden = !img; });
   // キーカード（未設定なら表紙と同じカード）のイラスト
   const cover = deckCover(deck);
   $('export-key').querySelector('.cover-art, .dm-face')?.remove();
@@ -428,6 +434,189 @@ async function openExport() {
   } catch {
     $('export-qr').textContent = 'デッキが大きすぎて QR コードにできません。共有リンクを使ってください';
   }
+}
+
+// ---------- 画像で保存 ----------
+// デッキ名・枚数・カードの一覧（画像と枚数）・QR コードを1枚の PNG に描く。
+// カードの画像は公式サイトのもので、サイトが許可していないと画像に描けない。そのときはボタンを出さない（openExport で確かめる）
+// （確かめたあとで一部の画像だけ読めなかったときは、そのカードを文明の色の枠・コスト・名前・パワーで描く）
+
+// 画像を読む（ほかのサイトの画像は、許可されていれば読める。だめなら null）
+function loadImage(src, cors) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    if (cors) img.crossOrigin = 'anonymous';
+    const timer = setTimeout(() => resolve(null), 5000);
+    img.onload = () => { clearTimeout(timer); resolve(img); };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = src;
+  });
+}
+
+// 角の丸い四角
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+// 文字を幅に収まるよう折り返して描く（行数まで）
+function fillWrapped(g, text, x, y, width, lineHeight, maxLines) {
+  let line = '';
+  let lines = 0;
+  for (const ch of text) {
+    if (g.measureText(line + ch).width > width && line) {
+      g.fillText(line, x, y + lines * lineHeight);
+      line = ch;
+      if (++lines >= maxLines) return;
+    } else {
+      line += ch;
+    }
+  }
+  if (line) g.fillText(line, x, y + lines * lineHeight);
+}
+
+// 画像が使えないカード：文明の色の枠・コスト・名前・パワー
+function drawCardFrame(g, card, x, y, w, h) {
+  const css = getComputedStyle(document.documentElement);
+  const civs = card.civs?.length ? card.civs : ['光'];
+  const color = (n) => css.getPropertyValue(`--civ-${DM.civOf(n)?.cls ?? 'light'}`).trim() || '#999';
+  const grad = g.createLinearGradient(x, y, x + w, y + h);
+  civs.forEach((n, i) => {
+    grad.addColorStop(i / civs.length, color(n));
+    grad.addColorStop((i + 1) / civs.length, color(n));
+  });
+  roundRect(g, x, y, w, h, 8);
+  g.fillStyle = grad;
+  g.fill();
+  roundRect(g, x + 5, y + 5, w - 10, h - 10, 5);
+  g.fillStyle = '#f2f0ea';
+  g.fill();
+  // コスト
+  g.fillStyle = color(civs[0]);
+  g.beginPath();
+  g.arc(x + 20, y + 20, 13, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#fff';
+  g.font = 'bold 15px sans-serif';
+  g.textAlign = 'center';
+  g.fillText(String(card.cost ?? ''), x + 20, y + 25);
+  // 名前
+  g.textAlign = 'left';
+  g.fillStyle = '#111';
+  g.font = 'bold 13px sans-serif';
+  fillWrapped(g, card.name, x + 37, y + 22, w - 44, 16, 3);
+  // パワー
+  if (card.power) {
+    g.font = 'bold 13px sans-serif';
+    const pw = g.measureText(card.power).width + 10;
+    g.fillStyle = '#222';
+    roundRect(g, x + 8, y + h - 26, pw, 18, 4);
+    g.fill();
+    g.fillStyle = '#fff';
+    g.fillText(card.power, x + 13, y + h - 12);
+  }
+}
+
+async function saveDeckImage() {
+  const deck = activeDeck();
+  const entries = deckEntries(deck).sort((a, b) => byCostName(a.card, b.card));
+  if (!entries.length) return;
+  const status = (t) => ($('export-status').textContent = t);
+  status('画像を作っています…');
+  const W = 1080;
+  const PAD = 32;
+  const COLS = 6;
+  const GAP = 12;
+  const cw = Math.floor((W - PAD * 2 - GAP * (COLS - 1)) / COLS);
+  const ch = Math.round(cw * 88 / 63);
+  const QR = 200;
+  const top = PAD + QR + 24;
+  const rows = Math.ceil(entries.length / COLS);
+  const H = top + rows * (ch + GAP) - GAP + PAD + 30;
+  const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H });
+  const g = canvas.getContext('2d');
+  // 背景
+  const bg = g.createLinearGradient(0, 0, W, H);
+  bg.addColorStop(0, '#0d3a9e');
+  bg.addColorStop(1, '#040a20');
+  g.fillStyle = bg;
+  g.fillRect(0, 0, W, H);
+  // デッキ名・枚数
+  g.fillStyle = '#fff';
+  g.font = 'bold 44px sans-serif';
+  g.textBaseline = 'alphabetic';
+  fillWrapped(g, deck.name, PAD, PAD + 44, W - PAD * 2 - QR - 24, 52, 2);
+  g.fillStyle = '#c8ff2e';
+  g.font = 'bold 28px sans-serif';
+  g.fillText(`${deckTotal(deck)}枚`, PAD, PAD + 150);
+  // QR コード（共有リンク）
+  try {
+    const qr = qrcode(0, 'L');
+    qr.addData(await deckLink(deck));
+    qr.make();
+    const n = qr.getModuleCount();
+    const qx = W - PAD - QR;
+    const qy = PAD;
+    g.fillStyle = '#fff';
+    roundRect(g, qx, qy, QR, QR, 14);
+    g.fill();
+    const cell = (QR - 16) / n;
+    g.fillStyle = '#000';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) g.fillRect(qx + 8 + c * cell, qy + 8 + r * cell, Math.ceil(cell), Math.ceil(cell));
+  } catch {}
+  // カード（画像が読めればその画像、だめなら枠）
+  const images = await Promise.all(entries.map((e) => loadImage(e.card.image, true)));
+  entries.forEach(({ card, qty }, i) => {
+    const x = PAD + (i % COLS) * (cw + GAP);
+    const y = top + Math.floor(i / COLS) * (ch + GAP);
+    if (images[i]) {
+      g.save();
+      roundRect(g, x, y, cw, ch, 8);
+      g.clip();
+      g.drawImage(images[i], x, y, cw, ch);
+      g.restore();
+    } else {
+      drawCardFrame(g, card, x, y, cw, ch);
+    }
+    // 枚数
+    g.font = 'bold 22px sans-serif';
+    const label = `×${qty}`;
+    const lw = g.measureText(label).width + 16;
+    g.fillStyle = '#c8ff2e';
+    roundRect(g, x + cw - lw - 4, y + ch - 34, lw, 30, 8);
+    g.fill();
+    g.fillStyle = '#08122e';
+    g.fillText(label, x + cw - lw + 4, y + ch - 12);
+  });
+  // アプリ名
+  g.fillStyle = 'rgba(255, 255, 255, .5)';
+  g.font = '18px sans-serif';
+  g.textAlign = 'right';
+  g.fillText('DuelMasters Classic Simulator', W - PAD, H - PAD + 8);
+  g.textAlign = 'left';
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return status('画像を作れませんでした');
+  const fileName = `${deck.name.replace(/[\\/:*?"<>|]/g, '_')}.png`;
+  // スマホは共有メニュー（写真に保存できる）、PC はダウンロード
+  const file = new File([blob], fileName, { type: 'image/png' });
+  if (phone() && navigator.canShare?.({ files: [file] })) {
+    status('');
+    navigator.share({ files: [file], title: deck.name }).catch(() => {});
+    return;
+  }
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: fileName });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  status('画像を保存しました');
 }
 
 // コピーする（できなければ、テキストを出して長押しでコピーしてもらう）
@@ -819,6 +1008,7 @@ function init() {
   $('import').addEventListener('click', openImport);
   $('import-form').addEventListener('submit', runImport);
   $('import-cancel').addEventListener('click', () => $('import-dialog').close());
+  $('export-image').addEventListener('click', saveDeckImage);
   $('export-copy').addEventListener('click', copyDeckText);
   $('export-link').addEventListener('click', copyDeckLink);
   $('export-close').addEventListener('click', () => $('export-dialog').close());

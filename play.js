@@ -161,6 +161,8 @@ function setupLeaveGuard() {
   window.addEventListener('pageshow', (e) => {
     if (!e.persisted) return;
     clearSavedGame();
+    // 読み直すときは「再読み込みしますか」の確認を出さない
+    leavingPage = true;
     location.reload();
   });
 }
@@ -1922,8 +1924,11 @@ function renderOpp() {
   const pick = game?.attack?.pick;
   $('opp-shields').replaceChildren(...Array.from({ length: st?.shields ?? 0 }, (_, i) => {
     const el = document.createElement('div');
-    el.className = 'card shield' + (pick ? ' pickable' : '') + (pick?.picked.includes(i) ? ' picked' : '');
+    // 相手が仕込んだシールドは、位置だけわかるように印を付ける（中身はわからない）
+    const planted = (st?.plantedShields ?? []).includes(i);
+    el.className = 'card shield' + (planted ? ' planted opp-planted' : '') + (pick ? ' pickable' : '') + (pick?.picked.includes(i) ? ' picked' : '');
     el.append(Object.assign(document.createElement('div'), { className: 'dm-back' }));
+    if (planted) el.title = `${oppName()}が仕込んだシールド`;
     if (pick) el.addEventListener('click', () => pickShield(i));
     return el;
   }));
@@ -1979,6 +1984,8 @@ function snapshot() {
     hand: game.zones.hand.length,
     library: game.zones.library.length,
     shields: game.zones.shields.length,
+    // 仕込んだシールドの位置（左から数えた番号）。中身は送らない
+    plantedShields: game.zones.shields.map((iid, i) => (game.cards[iid].planted ? i : -1)).filter((i) => i >= 0),
     battlefield: game.zones.battlefield.map(pub),
     mana: game.zones.mana.map(pub),
     graveyard: game.zones.graveyard.map(pub),

@@ -383,8 +383,10 @@ const Bgm = (() => {
   document.addEventListener('click', (e) => {
     const a = e.target.closest?.('a[href]');
     if (!a || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || a.target === '_blank') return;
+    // ファイルの保存（download・blob:）はページの移動ではないので、そのまま
+    if (a.hasAttribute('download')) return;
     const url = new URL(a.href, location.href);
-    if (url.origin !== location.origin || (url.pathname === location.pathname && url.hash)) return;
+    if (!/^https?:$/.test(url.protocol) || url.origin !== location.origin || (url.pathname === location.pathname && url.hash)) return;
     e.preventDefault();
     leave(url.href);
   });
