@@ -900,3 +900,13 @@ a.settings-btn { display: block; flex: none; }
 .setup-back:hover { background: linear-gradient(180deg, #2554b5, #143379); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 0 0 1px var(--cyan); }
 html.phone .setup-back { top: 8px; left: 8px; min-height: 36px; }
 .setup-panel .panel-head:focus { outline: none; }
+
+/* ---------- CPU 対戦 ---------- */
+/* CPU 側の画面（見えない iframe） */
+.cpu-frame { position: fixed; left: 0; top: 0; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
+/* 開始画面：CPU の強さとデッキ */
+.cpu-options { margin: 4px 0 0 26px; }
+.cpu-options[hidden] { display: none !important; }
+.cpu-levels { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px; }
+.cpu-options .field { display: flex; align-items: center; gap: 8px; margin: 0; }
+.cpu-options select { flex: 1; min-width: 0; }

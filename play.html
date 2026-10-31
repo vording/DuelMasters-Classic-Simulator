@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Russo+One&display=swap">
   <link rel="stylesheet" href="theme.css?v=8">
   <link rel="stylesheet" href="play.css?v=17">
-  <link rel="stylesheet" href="skin.css?v=46">
+  <link rel="stylesheet" href="skin.css?v=47">
   <script src="device.js?v=1"></script>
   <script src="logo.js?v=1"></script>
   <script src="felt.js?v=2"></script>
@@ -194,6 +194,15 @@
         <label class="mode-net"><input type="radio" name="mode" value="host" checked> ネット対戦：部屋を作る</label>
         <label class="mode-net"><input type="radio" name="mode" value="join"> ネット対戦：部屋に入る
           <input id="room-code" name="room" type="text" inputmode="numeric" autocomplete="off" placeholder="6桁の数字" maxlength="6" class="room-code"></label>
+        <label class="mode-net"><input type="radio" name="mode" value="cpu"> CPU と対戦</label>
+        <div id="cpu-options" class="cpu-options mode-net" hidden>
+          <div class="cpu-levels" role="radiogroup" aria-label="CPU の強さ">
+            <label><input type="radio" name="cpu-level" value="1"> 弱い</label>
+            <label><input type="radio" name="cpu-level" value="2" checked> 普通</label>
+            <label><input type="radio" name="cpu-level" value="3"> 強い</label>
+          </div>
+          <label class="field">CPU のデッキ <select id="cpu-deck" name="cpu-deck"></select></label>
+        </div>
       </fieldset>
       <fieldset class="order well">
         <legend><b>PLAYER</b><small>プレイヤー</small></legend>
@@ -243,12 +252,13 @@
   <div id="menu" class="menu" hidden></div>
 
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
-  <script src="sound.js?v=17"></script>
+  <script src="sound.js?v=18"></script>
   <script src="settings.js?v=15"></script>
   <script src="classic-cards.js?v=3"></script>
   <script src="cards.js?v=11"></script>
-  <script src="net.js?v=2"></script>
+  <script src="net.js?v=3"></script>
   <script src="effects.js?v=4"></script>
-  <script src="play.js?v=31"></script>
+  <script src="play.js?v=32"></script>
+  <script src="cpu.js?v=1"></script>
 </body>
 </html>

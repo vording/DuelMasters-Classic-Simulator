@@ -1,6 +1,7 @@
 // DuelMasters Classic Simulator — ネット対戦の通信部分
 // PeerJS（無料の公開サーバーで仲介 → ブラウザ同士で直接通信）で2人をつなぐ。
 // URL に ?local=1 を付けると、同じPCの別タブ同士を BroadcastChannel でつなぐ（動作確認用）。
+// host・join に { local: true } を渡しても BroadcastChannel でつなぐ（CPU 対戦：同じページの中の CPU とつなぐ）。
 //
 // 使い方: Net.on('open' | 'close' | 'status' | <メッセージの type>, fn)、Net.host(code)、Net.join(code)、Net.send(msg)
 
@@ -143,13 +144,13 @@ const Net = (() => {
 
   // ---------- 開始・終了 ----------
 
-  function start(r, c) {
+  function start(r, c, { local = false } = {}) {
     stop();
     stopped = false;
     role = r;
     code = c;
-    if (useLocal || typeof Peer === 'undefined') {
-      if (!useLocal) status('通信ライブラリを読み込めませんでした。同じPCのタブ同士でのみ対戦できます', 'error');
+    if (useLocal || local || typeof Peer === 'undefined') {
+      if (!useLocal && !local) status('通信ライブラリを読み込めませんでした。同じPCのタブ同士でのみ対戦できます', 'error');
       startLocal();
     } else if (role === 'host') {
       startPeerHost();
@@ -175,8 +176,8 @@ const Net = (() => {
     send,
     connected,
     newCode,
-    host: (c = newCode()) => start('host', c),
-    join: (c) => start('guest', c.replace(/\s/g, '').toUpperCase()),
+    host: (c = newCode(), opts) => start('host', c, opts),
+    join: (c, opts) => start('guest', opts?.local ? c : c.replace(/\s/g, '').toUpperCase(), opts),
     stop,
     get role() { return role; },
     get code() { return code; },
