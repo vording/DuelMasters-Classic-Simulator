@@ -118,6 +118,19 @@ function deckCover(d) {
   return cards.find((c) => c.id === d.keyCard) ?? [...cards].sort((a, b) => DM.isCreatureType(b.type) - DM.isCreatureType(a.type) || b.cost - a.cost)[0];
 }
 
+// 表紙：カード画像からイラストだけを切り出して、枠いっぱいに広げる（画像が読めないときはカードの枠の表示）
+function coverArt(card) {
+  const face = DM.cardFace(card, { lazy: true });
+  if (!card.image) return face;
+  const art = document.createElement('div');
+  art.className = 'cover-art';
+  const img = Object.assign(document.createElement('img'), { alt: card.name, draggable: false, loading: 'lazy', src: card.image });
+  img.addEventListener('load', () => art.classList.add('img-ok'));
+  img.addEventListener('error', () => img.remove());
+  art.append(face, img);
+  return art;
+}
+
 // キーカードにする（同じカードをもう一度押すと解除）
 function toggleKeyCard(card) {
   const d = activeDeck();
@@ -138,7 +151,7 @@ function renderHome() {
     tile.className = 'deck-tile';
     tile.tabIndex = 0;
     tile.innerHTML = '<div class="tile-cover"></div><div class="tile-name"></div><div class="tile-meta"><span class="tile-count"></span><span class="civ-dots"></span></div><div class="tile-actions"><button type="button" class="tile-edit">編集</button><button type="button" class="tile-play primary">対戦 ▶</button></div>';
-    tile.querySelector('.tile-cover').append(cover ? DM.cardFace(cover, { lazy: true }) : Object.assign(document.createElement('span'), { className: 'tile-empty', textContent: 'カードなし' }));
+    tile.querySelector('.tile-cover').append(cover ? coverArt(cover) : Object.assign(document.createElement('span'), { className: 'tile-empty', textContent: 'カードなし' }));
     tile.querySelector('.tile-name').textContent = d.name;
     const count = tile.querySelector('.tile-count');
     count.textContent = `${total} / ${DM.DECK_SIZE}`;
@@ -574,18 +587,6 @@ function renderRow({ card, qty }) {
   keyBtn.title = key ? 'キーカード（押すと解除）' : 'キーカードにする（デッキ選択の表紙に出す）';
   keyBtn.setAttribute('aria-pressed', String(key));
   keyBtn.addEventListener('click', () => toggleKeyCard(card));
-  // キーカードの行は、カードのイラストだけを切り出して行いっぱいに広げる（画像がなければ文明の色）
-  if (key) {
-    const art = document.createElement('div');
-    art.className = 'key-art';
-    art.style.setProperty('--civ-bg', `var(--civ-${DM.civOf(card.civs[0])?.cls ?? 'light'})`);
-    if (card.image) {
-      const img = Object.assign(document.createElement('img'), { alt: '', draggable: false, loading: 'lazy', src: card.image });
-      img.addEventListener('error', () => img.remove());
-      art.append(img);
-    }
-    row.prepend(art);
-  }
   row.querySelector('.qty').textContent = qty;
   row.querySelector('.cost').textContent = card.cost;
   row.querySelector('.name').textContent = card.name;
