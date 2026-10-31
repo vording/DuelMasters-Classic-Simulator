@@ -301,7 +301,6 @@ body { user-select: none; }
 
 /* ---------- ダイアログ・メニュー ---------- */
 
-.setup { width: min(420px, 92vw); }
 .setup .field { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
 .setup select { flex: 1; }
 .order { margin: 0; padding: 6px 12px 10px; }
