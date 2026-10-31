@@ -864,3 +864,30 @@ html.phone .export-deck-name { margin-bottom: 6px; }
 .tile-actions .tile-delete, .tile-actions .tile-delete:hover:not(:disabled) { color: #fff; background: linear-gradient(180deg, #e0574d, #b3271d); border-color: #ff9a90; }
 @keyframes tile-wobble { 0%, 100% { rotate: -.6deg; } 50% { rotate: .6deg; } }
 @media (prefers-reduced-motion: reduce) { .deck-home.editing .deck-tile { animation: none; } }
+
+/* ---------- 設定画面（settings.html・settings.js）：設定の項目とギャラリー ---------- */
+.settings-app { height: 100dvh; }
+.settings-main { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+.settings-page { width: 100%; max-width: 1180px; max-height: none; margin: 0 auto; padding: 10px; }
+.settings-columns { display: grid; grid-template-columns: minmax(0, 640px); justify-content: center; gap: 12px; }
+.settings-columns > [hidden] { display: none; }
+.settings-page .panel .dialog-body { padding: 10px 12px 12px; }
+.settings-page .avatar-choices { max-height: 210px; }
+.master-label { display: inline-flex; align-items: baseline; gap: 6px; }
+.master-label small { color: var(--muted); font-size: 11px; }
+/* ギャラリー：BGM は曲名と場面、効果音は名前のボタン */
+.gallery-bgm { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.gallery-track { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; text-align: left; }
+.gallery-track b { font-weight: 800; }
+.gallery-track small { color: var(--muted); font-size: 11px; }
+.gallery-track[aria-pressed="true"] { color: #08122e; background: linear-gradient(180deg, var(--lime-2), var(--lime)); border-color: #eaff9a; }
+.gallery-track[aria-pressed="true"] small { color: #2a3a10; }
+.gallery-se { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.gallery-se-btn { padding: 6px 8px; font-size: 13px; }
+html.phone .settings-columns { grid-template-columns: 1fr; }
+html.phone .settings-page { padding: 6px; }
+html.phone .gallery-bgm { grid-template-columns: 1fr 1fr; }
+html.phone .gallery-se { grid-template-columns: repeat(3, 1fr); }
+html.phone .gallery-se-btn { font-size: 12px; padding: 6px 4px; }
+/* 歯車は設定画面へのリンク */
+a.settings-btn { display: block; flex: none; }

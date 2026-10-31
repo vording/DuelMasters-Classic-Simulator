@@ -1454,17 +1454,9 @@ function render() {
 }
 
 // 対戦の準備中（開始画面・相手の参加や1ターン目を待っている間）は ready、ゲームが始まったら battle
-// 対戦中の曲（bgm/<file>.mp3）。ネット対戦・一人回しそれぞれの曲から、1回のゲームごとにランダムで選ぶ
-const BATTLE_BGM = [
-  { file: 'battle', title: 'Hybrid Landscape' },
-  { file: 'battle-cyber-girl', title: 'Cyber girl' },
-  { file: 'battle-all-is-vanity', title: 'All is vanity' },
-  { file: 'battle-seraphic-takedown', title: 'SERAPHIC TAKEDOWN' },
-];
-const SOLO_BGM = [
-  { file: 'battle-watering', title: 'WATERING' },
-  { file: 'solo-re-roots', title: 'RE-ROOTS' },
-];
+// 対戦中の曲（bgm/<file>.mp3。一覧は sound.js の Bgm.TRACKS）。ネット対戦・一人回しそれぞれの曲から、1回のゲームごとにランダムで選ぶ
+const BATTLE_BGM = Bgm.TRACKS.filter((t) => t.group === 'battle');
+const SOLO_BGM = Bgm.TRACKS.filter((t) => t.group === 'solo');
 const bgmList = () => (SOLO_PAGE ? SOLO_BGM : BATTLE_BGM);
 const battleBgm = () => bgmList()[game?.bgm] ?? bgmList()[0];
 
