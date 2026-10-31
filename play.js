@@ -2021,6 +2021,29 @@ function systemMessage(text) {
   saveJson(sessionStorage, CHAT_KEY, chat.slice(-200));
 }
 
+// ネット対戦：相手との接続が切れてから DROP_MS たってもつながり直さなければ、対戦を終了して対戦準備に戻る
+const DROP_MS = 3 * 60 * 1000;
+let dropTimer = null;
+
+function endByDisconnect() {
+  dropTimer = null;
+  if (!online() || !game || game.result || opp?.connected) return;
+  // 途中のゲーム・部屋・チャットを消して、対戦準備（開始画面）へ
+  clearSavedGame();
+  Net.stop();
+  netInfo = null;
+  opp = null;
+  chat = [];
+  history = [];
+  game = null;
+  $('net-status').textContent = '';
+  if ($('result').open) $('result').close();
+  renderOpp();
+  renderLog();
+  openSetup();
+  $('setup-error').textContent = '相手との接続が3分以上切れたため、対戦を終了しました。';
+}
+
 function setupNet() {
   Net.on('status', ({ text, state }) => {
     $('net-status').textContent = text;
@@ -2029,6 +2052,10 @@ function setupNet() {
   });
   Net.on('open', () => {
     opp = { ...opp, connected: true };
+    // つながり直したら、切断による対戦終了を取りやめる
+    if (dropTimer) systemMessage(`${oppName()}との接続が戻りました`);
+    clearTimeout(dropTimer);
+    dropTimer = null;
     sendHello();
     if (game) {
       Net.send({ type: 'state', state: snapshot() });
@@ -2038,7 +2065,14 @@ function setupNet() {
   });
   Net.on('close', () => {
     opp = { ...opp, connected: false };
-    systemMessage(`${oppName()}との接続が切れました`);
+    // 対戦中なら、3分たってもつながり直さなければ対戦を終了する
+    if (game?.dealt && !game.result && !dropTimer) {
+      dropTimer = setTimeout(endByDisconnect, DROP_MS);
+      systemMessage(`${oppName()}との接続が切れました。3分以内につながり直さなければ、対戦を終了します`);
+      showToast(`${oppName()}との接続が切れました（3分で対戦終了）`);
+    } else {
+      systemMessage(`${oppName()}との接続が切れました`);
+    }
     if (game) render(); else renderOpp();
   });
   Net.on('hello', (msg) => {
