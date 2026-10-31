@@ -167,10 +167,7 @@ const Settings = (() => {
               </div>
               <p id="settings-status" class="status"></p>
             </fieldset>
-            <fieldset class="settings-group well">
-              <legend><b>TITLE</b><small>タイトル</small></legend>
-              <div class="settings-row"><button type="button" id="settings-title">タイトルに戻る</button></div>
-            </fieldset>
+            <div class="settings-title-row"><button type="button" id="settings-title">タイトルに戻る</button></div>
           </div>
         </section>
         <section class="panel gallery-panel" id="gallery-view" hidden>
